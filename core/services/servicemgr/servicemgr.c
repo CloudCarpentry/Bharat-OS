@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <bharat/uapi/ipc/status.h>
+#include <bharat/cap/cap_validate.h>
+#include <bharat/cap/cap_authz.h>
 #include <bharat/runtime/runtime.h>
 #include <bharat/namesvc/client.h>
 #include <bharat/syscalls.h>
@@ -11,6 +13,57 @@
 #define STABILITY_WINDOW_NS (2ULL * HEARTBEAT_TIMEOUT_MS * BH_NS_PER_MS)
 /* Owned exclusively by the supervisor event loop. No cross-core mutation. */
 static bh_servicemgr_t g_servicemgr;
+
+/* Weak fallbacks so standalone unit tests that do not link libcap_base or libipc
+ * still link cleanly and fail closed. */
+int32_t __attribute__((weak)) bharat_service_dispatch_authorize(
+    uint32_t service_id,
+    uint32_t opcode,
+    const bharat_service_authz_desc_t *descs,
+    uint32_t desc_count,
+    bharat_cap_handle_t caller_cap,
+    uint64_t target_object_id) {
+    (void)service_id;
+    (void)opcode;
+    (void)descs;
+    (void)desc_count;
+    (void)caller_cap;
+    (void)target_object_id;
+    return BHARAT_IPC_STATUS_ERR_PERM;
+}
+
+int32_t __attribute__((weak)) bharat_ipc_recv_envelope_ex(
+    bharat_ipc_endpoint_t endpoint,
+    bharat_ipc_msg_header_t *header,
+    void *payload_buf,
+    uint32_t max_size,
+    uint64_t timeout_ticks,
+    bh_ipc_receive_envelope_v1_t *out_envelope) {
+    (void)endpoint;
+    (void)header;
+    (void)payload_buf;
+    (void)max_size;
+    (void)timeout_ticks;
+    (void)out_envelope;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+}
+
+int32_t __attribute__((weak)) bharat_ipc_endpoint_close(bharat_ipc_endpoint_t endpoint) {
+    (void)endpoint;
+    return BHARAT_IPC_STATUS_OK;
+}
+
+int32_t __attribute__((weak)) bharat_ipc_send_ex(
+    bharat_ipc_endpoint_t endpoint,
+    const bharat_ipc_msg_header_t *header,
+    const void *payload,
+    uint64_t timeout_ticks) {
+    (void)endpoint;
+    (void)header;
+    (void)payload;
+    (void)timeout_ticks;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+}
 
 bh_servicemgr_t *servicemgr_get_instance(void) { return &g_servicemgr; }
 
@@ -410,8 +463,6 @@ int32_t servicemgr_stage_commit(const sm_handoff_commit_t *req) {
         g_servicemgr.staged_instances[i].last_start_ns = now;
         g_servicemgr.staged_instances[i].last_heartbeat_ns = now;
     }
-    /* Atomic relative to this single-threaded event loop. Trusted process identity
-     * verification must precede this internal call; wire RPC is disabled below. */
     memcpy(g_servicemgr.service_instances, g_servicemgr.staged_instances, sizeof(g_servicemgr.service_instances));
     g_servicemgr.instance_count = req->record_count;
     g_servicemgr.boot_session_id = g_servicemgr.staged_boot_session_id;
@@ -422,12 +473,77 @@ int32_t servicemgr_stage_commit(const sm_handoff_commit_t *req) {
     return 0;
 }
 
+static const bharat_service_authz_desc_t servicemgr_authz_descs[] = {
+    {
+        .opcode = SM_OP_REGISTER,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+    },
+    {
+        .opcode = SM_OP_START,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_EXECUTE,
+    },
+    {
+        .opcode = SM_OP_STOP,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_EXECUTE,
+    },
+    {
+        .opcode = SM_OP_QUERY,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_READ,
+    },
+    {
+        .opcode = SM_OP_HANDOFF_BEGIN,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE | BHARAT_CAP_RIGHT_GRANT,
+    },
+    {
+        .opcode = SM_OP_HANDOFF_SERVICE,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE | BHARAT_CAP_RIGHT_GRANT,
+    },
+    {
+        .opcode = SM_OP_HANDOFF_COMMIT,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE | BHARAT_CAP_RIGHT_GRANT,
+    },
+};
+
 int32_t servicemgr_authorize(uint32_t opcode, const void *req, bharat_cap_handle_t caller_cap) {
-    (void)opcode; (void)req; (void)caller_cap;
-    /* IPC currently transfers only a reply SEND cap, with no authenticated PID
-     * or separate authority cap. A wire integer cannot authorize any operation.
-     * No test resolver is installed as a production fallback. */
-    return BHARAT_IPC_STATUS_ERR_PERM;
+    if (!req || caller_cap == BHARAT_CAP_INVALID_HANDLE) {
+        return BHARAT_IPC_STATUS_ERR_PERM;
+    }
+
+    uint64_t target_object_id = 0;
+    switch (opcode) {
+    case SM_OP_REGISTER:
+    case SM_OP_HANDOFF_BEGIN:
+    case SM_OP_HANDOFF_SERVICE:
+    case SM_OP_HANDOFF_COMMIT:
+        target_object_id = 0;
+        break;
+    case SM_OP_START:
+        target_object_id = ((const sm_req_start_t *)req)->service_id;
+        break;
+    case SM_OP_STOP:
+        target_object_id = ((const sm_req_stop_t *)req)->service_id;
+        break;
+    case SM_OP_QUERY:
+        target_object_id = ((const sm_req_query_t *)req)->service_id;
+        break;
+    default:
+        return BHARAT_IPC_STATUS_ERR_OPCODE;
+    }
+
+    return bharat_service_dispatch_authorize(
+        SERVICEMGR_SERVICE_ID,
+        opcode,
+        servicemgr_authz_descs,
+        sizeof(servicemgr_authz_descs) / sizeof(servicemgr_authz_descs[0]),
+        caller_cap,
+        target_object_id);
 }
 
 int32_t servicemgr_poll_once(bh_servicemgr_t *mgr, uint64_t wait_deadline_ns) {
@@ -438,9 +554,22 @@ int32_t servicemgr_poll_once(bh_servicemgr_t *mgr, uint64_t wait_deadline_ns) {
     uint64_t timeout = 100 * BH_NS_PER_MS;
     if (wait_deadline_ns > now && wait_deadline_ns - now < timeout) timeout = wait_deadline_ns - now;
     bharat_ipc_msg_header_t header = {0};
-    union { sm_handoff_begin_t begin; sm_req_health_update_t health; uint8_t bytes[128]; } payload = {0};
-    int32_t rc = bharat_ipc_recv_ex(mgr->my_endpoint, &header, &payload, sizeof(payload), timeout);
+    bh_ipc_receive_envelope_v1_t env = {0};
+    union {
+        sm_req_register_t reg;
+        sm_req_start_t start;
+        sm_req_stop_t stop;
+        sm_req_query_t query;
+        sm_req_health_update_t health;
+        sm_handoff_begin_t begin;
+        sm_handoff_service_t service;
+        sm_handoff_commit_t commit;
+        uint8_t bytes[128];
+    } payload = {0};
+
+    int32_t rc = bharat_ipc_recv_envelope_ex(mgr->my_endpoint, &header, &payload, sizeof(payload), timeout, &env);
     if (rc != 0) return rc;
+
     /* Validate exact sizes before reading any field, including for authorization. */
     size_t expected = 0;
     switch (header.opcode) {
@@ -452,23 +581,112 @@ int32_t servicemgr_poll_once(bh_servicemgr_t *mgr, uint64_t wait_deadline_ns) {
     case SM_OP_HANDOFF_BEGIN: expected = sizeof(sm_handoff_begin_t); break;
     case SM_OP_HANDOFF_SERVICE: expected = sizeof(sm_handoff_service_t); break;
     case SM_OP_HANDOFF_COMMIT: expected = sizeof(sm_handoff_commit_t); break;
-    default: return BHARAT_IPC_STATUS_ERR_OPCODE;
+    default:
+        if (env.authority_cap) (void)bharat_ipc_endpoint_close(env.authority_cap);
+        if (env.reply_send_cap) (void)bharat_ipc_endpoint_close(env.reply_send_cap);
+        return BHARAT_IPC_STATUS_ERR_OPCODE;
     }
-    if (header.payload_size != expected) return BHARAT_IPC_STATUS_ERR_LENGTH;
-    if (header.opcode == SM_OP_HANDOFF_BEGIN &&
-        (payload.begin.abi_major != 1 || payload.begin.abi_minor || payload.begin.struct_size != sizeof(payload.begin)))
-        return BHARAT_IPC_STATUS_ERR_VERSION;
-    if (header.opcode == SM_OP_HEALTH_UPDATE && payload.health.struct_size != sizeof(payload.health))
+    if (header.payload_size != expected) {
+        if (env.authority_cap) (void)bharat_ipc_endpoint_close(env.authority_cap);
+        if (env.reply_send_cap) (void)bharat_ipc_endpoint_close(env.reply_send_cap);
         return BHARAT_IPC_STATUS_ERR_LENGTH;
-    /* Do not reply to an unverified numeric reply_endpoint. Actual transfer
-     * metadata is not exposed by recv_ex independently of the wire header. */
-    return servicemgr_authorize(header.opcode, &payload, header.capability_transfer);
+    }
+    if (header.opcode == SM_OP_HANDOFF_BEGIN &&
+        (payload.begin.abi_major != 1 || payload.begin.abi_minor || payload.begin.struct_size != sizeof(payload.begin))) {
+        if (env.authority_cap) (void)bharat_ipc_endpoint_close(env.authority_cap);
+        if (env.reply_send_cap) (void)bharat_ipc_endpoint_close(env.reply_send_cap);
+        return BHARAT_IPC_STATUS_ERR_VERSION;
+    }
+    if (header.opcode == SM_OP_HEALTH_UPDATE && payload.health.struct_size != sizeof(payload.health)) {
+        if (env.authority_cap) (void)bharat_ipc_endpoint_close(env.authority_cap);
+        if (env.reply_send_cap) (void)bharat_ipc_endpoint_close(env.reply_send_cap);
+        return BHARAT_IPC_STATUS_ERR_LENGTH;
+    }
+
+    union {
+        sm_resp_register_t reg;
+        sm_resp_start_t start;
+        sm_resp_stop_t stop;
+        sm_resp_query_t query;
+        sm_resp_health_update_t health;
+        sm_handoff_resp_t handoff;
+        uint8_t bytes[64];
+    } resp = {0};
+    uint32_t resp_size = 0U;
+    int32_t dispatch_rc = BHARAT_IPC_STATUS_ERR_PERM;
+
+    if (header.opcode == SM_OP_HEALTH_UPDATE) {
+        /* Health updates are authenticated by kernel-supplied sender_pid provenance. */
+        dispatch_rc = servicemgr_handle_health_update(&payload.health, &resp.health, env.sender_pid);
+        resp_size = sizeof(resp.health);
+    } else {
+        /* Privileged administrative and handoff operations require env.authority_cap;
+         * env.reply_send_cap is never used as administrative authority. */
+        dispatch_rc = servicemgr_authorize(header.opcode, &payload, env.authority_cap);
+        if (dispatch_rc == BHARAT_IPC_STATUS_OK) {
+            switch (header.opcode) {
+            case SM_OP_REGISTER:
+                dispatch_rc = servicemgr_handle_register(&payload.reg, &resp.reg);
+                resp_size = sizeof(resp.reg);
+                break;
+            case SM_OP_START:
+                dispatch_rc = servicemgr_handle_start(&payload.start, &resp.start);
+                resp_size = sizeof(resp.start);
+                break;
+            case SM_OP_STOP:
+                dispatch_rc = servicemgr_handle_stop(&payload.stop, &resp.stop);
+                resp_size = sizeof(resp.stop);
+                break;
+            case SM_OP_QUERY:
+                dispatch_rc = servicemgr_handle_query(&payload.query, &resp.query);
+                resp_size = sizeof(resp.query);
+                break;
+            case SM_OP_HANDOFF_BEGIN:
+                dispatch_rc = servicemgr_stage_begin(&payload.begin);
+                resp.handoff.status = dispatch_rc;
+                resp_size = sizeof(resp.handoff);
+                break;
+            case SM_OP_HANDOFF_SERVICE:
+                dispatch_rc = servicemgr_stage_service(&payload.service);
+                resp.handoff.status = dispatch_rc;
+                resp_size = sizeof(resp.handoff);
+                break;
+            case SM_OP_HANDOFF_COMMIT:
+                dispatch_rc = servicemgr_stage_commit(&payload.commit);
+                resp.handoff.status = dispatch_rc;
+                resp_size = sizeof(resp.handoff);
+                break;
+            default:
+                dispatch_rc = BHARAT_IPC_STATUS_ERR_OPCODE;
+                break;
+            }
+        }
+    }
+
+    if (env.authority_cap != BHARAT_CAP_INVALID_HANDLE) {
+        (void)bharat_ipc_endpoint_close(env.authority_cap);
+    }
+
+    if (env.reply_send_cap != BHARAT_CAP_INVALID_HANDLE) {
+        bharat_ipc_msg_header_t rep_hdr = {
+            .header_version = BHARAT_IPC_HEADER_VERSION_V1,
+            .service_id = SERVICEMGR_SERVICE_ID,
+            .interface_id = header.interface_id,
+            .interface_version = header.interface_version,
+            .opcode = header.opcode,
+            .status = dispatch_rc,
+            .payload_size = resp_size,
+            .message_id = header.message_id,
+        };
+        (void)bharat_ipc_send(env.reply_send_cap, &rep_hdr, resp_size > 0U ? (const void *)&resp : NULL);
+        (void)bharat_ipc_endpoint_close(env.reply_send_cap);
+    }
+
+    return dispatch_rc;
 }
 
 void servicemgr_loop(bharat_ipc_endpoint_t endpoint) {
     g_servicemgr.my_endpoint = endpoint;
-    /* Publication needs a distinct SEND capability. The caller supplied RECEIVE
-     * only; fail closed until main provides and registers a real SEND endpoint. */
     while (true) {
         uint64_t now = 0;
         if (now_ns(&now) != 0) return;

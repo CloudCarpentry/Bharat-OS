@@ -7,6 +7,7 @@ long bh_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg
 
 #include <bharat/uapi/syscall_nr.h>
 #include <bharat/uapi/syscall_args.h>
+#include <bharat/uapi/ipc/contract.h>
 
 long bh_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
 
@@ -18,22 +19,45 @@ static inline long ipc_endpoint_create(uint32_t* out_send_cap, uint32_t* out_rec
     return bh_syscall(SYSCALL_ENDPOINT_CREATE, (long)(uintptr_t)&args, 0, 0, 0, 0, 0);
 }
 
-static inline long ipc_endpoint_send(uint32_t send_cap,
-                                     const void* payload,
-                                     uint32_t len,
-                                     uint64_t timeout_ticks,
-                                     uint32_t cap_to_send,
-                                     uint32_t cap_rights) {
+static inline long ipc_endpoint_close(uint32_t cap) {
+    if (!cap) return 0;
+    bharat_sys_cap_invoke_args_t args = {
+        .cap_id = cap,
+        .opcode = BH_ENDPOINT_OP_CLOSE,
+        .arg0 = 0,
+        .arg1 = 0,
+    };
+    return bh_syscall(SYSCALL_CAPABILITY_INVOKE, (long)(uintptr_t)&args, 0, 0, 0, 0, 0);
+}
+
+static inline long ipc_endpoint_send_ex(uint32_t send_cap,
+                                        const void* payload,
+                                        uint32_t len,
+                                        uint64_t timeout_ticks,
+                                        uint32_t cap_to_send,
+                                        uint64_t cap_rights,
+                                        uint32_t reply_cap_to_send,
+                                        uint64_t reply_cap_rights) {
     bharat_sys_endpoint_send_args_t args = {
         .send_cap = send_cap,
         .payload_len = len,
         .payload_ptr = (uint64_t)(uintptr_t)payload,
         .timeout_ticks = timeout_ticks,
         .cap_to_send = cap_to_send,
-        .cap_send_rights = cap_rights,
-        .reserved0 = 0,
+        .cap_send_rights = (uint32_t)cap_rights,
+        .reply_cap_to_send = reply_cap_to_send,
+        .reply_cap_send_rights = (uint32_t)reply_cap_rights,
     };
     return bh_syscall(SYSCALL_ENDPOINT_SEND, (long)(uintptr_t)&args, 0, 0, 0, 0, 0);
+}
+
+static inline long ipc_endpoint_send(uint32_t send_cap,
+                                     const void* payload,
+                                     uint32_t len,
+                                     uint64_t timeout_ticks,
+                                     uint32_t cap_to_send,
+                                     uint32_t cap_rights) {
+    return ipc_endpoint_send_ex(send_cap, payload, len, timeout_ticks, cap_to_send, cap_rights, 0U, 0U);
 }
 
 static inline long ipc_endpoint_receive(uint32_t recv_cap,

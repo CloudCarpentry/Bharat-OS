@@ -50,6 +50,21 @@ int namesvc_lookup(const char *name, bharat_service_id_t *out_id, bharat_ipc_end
 
 static int32_t mock_ipc_status = BHARAT_IPC_STATUS_OK;
 static int32_t mock_pm_resp_status = 0;
+long bh_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
+    (void)sysno; (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6;
+    if (arg1) {
+        uint64_t *ptrs = (uint64_t *)(uintptr_t)arg1;
+        if (ptrs[0] && ptrs[1] && ptrs[0] > 0x1000ULL && ptrs[1] > 0x1000ULL) {
+            *(uint32_t *)(uintptr_t)ptrs[0] = 0x10U;
+            *(uint32_t *)(uintptr_t)ptrs[1] = 0x11U;
+        }
+    }
+    return 0;
+}
+int32_t bharat_ipc_send(bharat_ipc_endpoint_t ep, const bharat_ipc_msg_header_t *hdr, const void *payload) {
+    (void)ep; (void)hdr; (void)payload;
+    return mock_ipc_status;
+}
 int32_t bharat_ipc_call_ex(bharat_ipc_endpoint_t ep,
                            const bharat_ipc_msg_header_t *req_hdr,
                            const void *req_payload,

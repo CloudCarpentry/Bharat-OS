@@ -101,7 +101,9 @@
 #define BHARAT_CONFIG_CAP_REVOKE_MAX @BHARAT_CAP_REVOKE_MAX@
 
 /* Scheduler hot-path diagnostics: 0=elided, 1=counters, 2=trace markers. */
+#ifndef BHARAT_SCHED_DIAG_COMPILE_LEVEL
 #define BHARAT_SCHED_DIAG_COMPILE_LEVEL @BHARAT_SCHED_DIAG_COMPILE_LEVEL@
+#endif
 
 /* Security compatibility: production handles always carry a generation. */
 #cmakedefine BHARAT_ENABLE_LEGACY_CAP_TESTS 1

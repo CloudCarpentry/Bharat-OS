@@ -296,7 +296,7 @@ bharat_status_t process_manager_handle_query(const pm_req_query_t *req, pm_resp_
 static bool valid_v1_request(uint32_t abi_version, uint32_t struct_size,
                              size_t expected_size) {
     return abi_version == BH_PM_INTERFACE_VERSION_V1 &&
-           struct_size == expected_size;
+            struct_size == expected_size;
 }
 
 bharat_status_t bh_pm_handle_register_executable_v1(
@@ -362,7 +362,8 @@ bharat_status_t bh_pm_handle_spawn_with_cap_v1(const bh_pm_spawn_request_v1_t *r
     resp->struct_size = sizeof(bh_pm_spawn_response_v1_t);
 
     if (!valid_v1_request(req->abi_version, req->struct_size, sizeof(*req)) ||
-        req->executable_handle == 0) {
+        req->executable_handle == 0 ||
+        (capability_transfer == 0 && req->reserved != 0)) {
         resp->status = BHARAT_IPC_STATUS_ERR_INVALID;
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -684,7 +685,7 @@ bharat_status_t bh_pm_handle_wait_v1(const bh_pm_wait_request_v1_t *req, bh_pm_w
     }
 
     if (req->wait_flags & BH_PM_WAIT_NONBLOCK) {
-        resp->status = BHARAT_IPC_STATUS_ERR_BUSY; // Or custom wait-not-ready
+        resp->status = BHARAT_IPC_STATUS_ERR_BUSY;
         return BHARAT_IPC_STATUS_ERR_BUSY;
     }
 
@@ -762,23 +763,29 @@ void bh_pm_notify_exit_v1(uint64_t kernel_process_id, int32_t exit_code, uint32_
 void process_manager_loop(bharat_ipc_endpoint_t endpoint) {
     bharat_ipc_msg_header_t req_header;
     bharat_ipc_msg_header_t resp_header;
+    bh_ipc_receive_envelope_v1_t env;
     uint8_t payload_buf[512];
     uint8_t resp_payload_buf[512];
 
     while (true) {
         local_memset(&req_header, 0, sizeof(req_header));
         local_memset(&resp_header, 0, sizeof(resp_header));
+        local_memset(&env, 0, sizeof(env));
         local_memset(payload_buf, 0, sizeof(payload_buf));
         local_memset(resp_payload_buf, 0, sizeof(resp_payload_buf));
-        int32_t recv_status = bharat_ipc_recv(endpoint, &req_header, payload_buf, sizeof(payload_buf));
+        int32_t recv_status = bharat_ipc_recv_envelope(endpoint, &req_header, payload_buf, sizeof(payload_buf), &env);
         if (recv_status < 0) {
+            extern int bharat_sched_yield(void);
+            bharat_sched_yield();
             continue;
         }
-
         if (req_header.service_id != PROCESS_MANAGER_SERVICE_ID) {
+            if (env.authority_cap != 0U) (void)bharat_ipc_endpoint_close(env.authority_cap);
+            if (env.reply_send_cap != 0U) (void)bharat_ipc_endpoint_close(env.reply_send_cap);
             continue;
         }
 
+        resp_header.header_version = BHARAT_IPC_HEADER_VERSION_V1;
         resp_header.service_id = req_header.service_id;
         resp_header.interface_id = req_header.interface_id;
         resp_header.interface_version = req_header.interface_version;
@@ -787,6 +794,7 @@ void process_manager_loop(bharat_ipc_endpoint_t endpoint) {
 
         int32_t dispatch_status = BHARAT_IPC_STATUS_ERR_OPCODE;
         uint32_t resp_size = 0;
+        bool retained_auth_cap = false;
 
         // Route between legacy v0 and modern v1 interface versions
         if (req_header.interface_version == BH_PM_INTERFACE_VERSION_V1) {
@@ -795,7 +803,10 @@ void process_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     if (req_header.payload_size == sizeof(bh_pm_spawn_request_v1_t)) {
                         const bh_pm_spawn_request_v1_t *req = (const bh_pm_spawn_request_v1_t *)payload_buf;
                         bh_pm_spawn_response_v1_t *resp = (bh_pm_spawn_response_v1_t *)resp_payload_buf;
-                        dispatch_status = bh_pm_handle_spawn_with_cap_v1(req, resp, req_header.capability_transfer);
+                        dispatch_status = bh_pm_handle_spawn_with_cap_v1(req, resp, env.authority_cap);
+                        if (dispatch_status == BHARAT_IPC_STATUS_OK && env.authority_cap != 0U) {
+                            retained_auth_cap = true;
+                        }
                         resp_size = sizeof(bh_pm_spawn_response_v1_t);
                     } else {
                         dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
@@ -863,13 +874,13 @@ void process_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     break;
             }
         } else {
-            // Legacy v0 interface
+            // Legacy v0 interface — authorize exclusively against kernel-verified env.authority_cap
             switch (req_header.opcode) {
                 case PM_OP_CREATE: {
                     if (req_header.payload_size >= sizeof(pm_req_create_t)) {
                         pm_req_create_t *req = (pm_req_create_t*)payload_buf;
                         pm_resp_create_t *resp = (pm_resp_create_t*)resp_payload_buf;
-                        int32_t auth_status = process_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
+                        int32_t auth_status = process_manager_authorize(req_header.opcode, req, env.authority_cap);
                         if (auth_status != BHARAT_IPC_STATUS_OK) {
                             resp->status = auth_status;
                             dispatch_status = auth_status;
@@ -887,7 +898,7 @@ void process_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     if (req_header.payload_size >= sizeof(pm_req_start_t)) {
                         pm_req_start_t *req = (pm_req_start_t*)payload_buf;
                         pm_resp_start_t *resp = (pm_resp_start_t*)resp_payload_buf;
-                        int32_t auth_status = process_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
+                        int32_t auth_status = process_manager_authorize(req_header.opcode, req, env.authority_cap);
                         if (auth_status != BHARAT_IPC_STATUS_OK) {
                             resp->status = auth_status;
                             dispatch_status = auth_status;
@@ -905,7 +916,7 @@ void process_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     if (req_header.payload_size >= sizeof(pm_req_stop_t)) {
                         pm_req_stop_t *req = (pm_req_stop_t*)payload_buf;
                         pm_resp_stop_t *resp = (pm_resp_stop_t*)resp_payload_buf;
-                        int32_t auth_status = process_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
+                        int32_t auth_status = process_manager_authorize(req_header.opcode, req, env.authority_cap);
                         if (auth_status != BHARAT_IPC_STATUS_OK) {
                             resp->status = auth_status;
                             dispatch_status = auth_status;
@@ -923,7 +934,7 @@ void process_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     if (req_header.payload_size >= sizeof(pm_req_query_t)) {
                         pm_req_query_t *req = (pm_req_query_t*)payload_buf;
                         pm_resp_query_t *resp = (pm_resp_query_t*)resp_payload_buf;
-                        int32_t auth_status = process_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
+                        int32_t auth_status = process_manager_authorize(req_header.opcode, req, env.authority_cap);
                         if (auth_status != BHARAT_IPC_STATUS_OK) {
                             resp->status = auth_status;
                             dispatch_status = auth_status;
@@ -942,12 +953,16 @@ void process_manager_loop(bharat_ipc_endpoint_t endpoint) {
             }
         }
 
-        resp_header.payload_size = resp_size;
-        resp_header.flags = dispatch_status;
+        if (!retained_auth_cap && env.authority_cap != 0U) {
+            (void)bharat_ipc_endpoint_close(env.authority_cap);
+        }
 
-        if (req_header.reply_endpoint != 0) {
-            bharat_ipc_endpoint_t rep_ep = req_header.reply_endpoint;
-            bharat_ipc_send(rep_ep, &resp_header, resp_payload_buf);
+        resp_header.payload_size = resp_size;
+        resp_header.status = dispatch_status;
+
+        if (env.reply_send_cap != 0U) {
+            (void)bharat_ipc_send(env.reply_send_cap, &resp_header, resp_size > 0U ? resp_payload_buf : NULL);
+            (void)bharat_ipc_endpoint_close(env.reply_send_cap);
         }
     }
 }

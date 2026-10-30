@@ -1,5 +1,6 @@
 #include "syscall/syscall_capability.h"
 #include "capability.h"
+#include "sched/sched.h"
 #include "trap/syscall_status.h"
 
 bh_status_t bh_syscall_validate_capability(bh_syscall_ctx_t *ctx,

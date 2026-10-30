@@ -45,6 +45,15 @@ typedef struct {
     uint64_t scope_id;
 } bharat_cap_scope_t;
 
+#define BH_CAP_CONSTRAINT_CHECK_OBJECT_ID (1U << 0)
+#define BH_CAP_CONSTRAINT_CHECK_SCOPE_ID  (1U << 1)
+
+typedef struct {
+    uint64_t object_id;
+    uint32_t scope_id;
+    uint32_t constraint_flags;
+} bh_cap_identity_t;
+
 #include <bharat/cap/cap.h>
 
 typedef struct {

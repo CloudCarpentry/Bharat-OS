@@ -20,10 +20,14 @@ static uint32_t g_rx_tail;
 static long g_next_send_status;
 static long g_next_recv_status;
 static uint32_t g_create_count;
+static uint32_t g_close_count;
 static uint32_t g_send_count;
 static uint32_t g_recv_count;
 static uint32_t g_discarded_caps;
 static uint32_t g_pending_cap;
+static uint32_t g_last_sent_cap;
+static uint32_t g_last_sent_reply_cap;
+static uint64_t g_last_sent_reply_rights;
 static uint64_t g_last_send_timeout;
 static uint64_t g_last_recv_timeout;
 
@@ -73,7 +77,13 @@ static void queue_rx(const void* data, uint32_t len) {
 }
 
 long bh_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
-    (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6;
+    (void)arg3; (void)arg4; (void)arg5; (void)arg6;
+    if (sysno == SYSCALL_CAPABILITY_INVOKE) {
+        const bharat_sys_cap_invoke_args_t *args = (const bharat_sys_cap_invoke_args_t *)(uintptr_t)arg1;
+        if (!args || !args->cap_id || args->opcode != BH_ENDPOINT_OP_CLOSE) return BH_ERR_INVALID_ARGUMENT;
+        g_close_count++;
+        return 0;
+    }
     if (!arg1) return BH_ERR_INVALID_ARGUMENT;
     if (sysno == SYSCALL_ENDPOINT_CREATE) {
         g_create_count++;
@@ -85,11 +95,36 @@ long bh_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg
     }
     if (sysno == SYSCALL_ENDPOINT_SEND) {
         const bharat_sys_endpoint_send_args_t *args = (void *)(uintptr_t)arg1;
-        if (!args->send_cap || !args->payload_ptr || args->payload_len > 128 || args->reserved0) return BH_ERR_INVALID_ARGUMENT;
+        if (!args->send_cap || !args->payload_ptr || args->payload_len > 128) return BH_ERR_INVALID_ARGUMENT;
+        g_last_sent_cap = args->cap_to_send;
+        g_last_sent_reply_cap = args->reply_cap_to_send;
+        g_last_sent_reply_rights = args->reply_cap_send_rights;
         return bharat_ipc_transport_send(args->send_cap, (void *)(uintptr_t)args->payload_ptr,
                                         args->payload_len, args->timeout_ticks);
     }
     if (sysno == SYSCALL_ENDPOINT_RECEIVE) {
+        if (arg2 == (long)BH_IPC_RECEIVE_SELECTOR_V1) {
+            const bharat_sys_endpoint_receive_v1_args_t *args = (void *)(uintptr_t)arg1;
+            if (args->version != BH_IPC_RECEIVE_ENVELOPE_VERSION_V1 ||
+                args->struct_size != sizeof(*args) ||
+                !args->recv_cap || !args->out_payload_ptr || !args->out_len_ptr || !args->out_envelope_ptr ||
+                args->out_envelope_capacity < sizeof(bh_ipc_receive_envelope_v1_t)) {
+                return BH_ERR_INVALID_ARGUMENT;
+            }
+            *(uint32_t *)(uintptr_t)args->out_len_ptr = 0;
+            bh_ipc_receive_envelope_v1_t *env = (bh_ipc_receive_envelope_v1_t *)(uintptr_t)args->out_envelope_ptr;
+            memset(env, 0, sizeof(*env));
+            env->version = BH_IPC_RECEIVE_ENVELOPE_VERSION_V1;
+            env->struct_size = sizeof(*env);
+            long st = bharat_ipc_transport_receive(args->recv_cap, (void *)(uintptr_t)args->out_payload_ptr,
+                args->out_payload_capacity, (uint32_t *)(uintptr_t)args->out_len_ptr, args->timeout_ticks);
+            if (st == 0 && g_pending_cap != 0U) {
+                env->authority_cap = g_pending_cap;
+                env->valid_fields |= BH_IPC_ENVELOPE_F_AUTHORITY_CAP;
+                g_pending_cap = 0U;
+            }
+            return st;
+        }
         const bharat_sys_endpoint_receive_args_t *args = (void *)(uintptr_t)arg1;
         if (!args->recv_cap || !args->out_payload_ptr || !args->out_len_ptr) return BH_ERR_INVALID_ARGUMENT;
         *(uint32_t *)(uintptr_t)args->out_len_ptr = 0;
@@ -126,10 +161,14 @@ static void clear_state() {
     g_next_send_status = 0;
     g_next_recv_status = 0;
     g_create_count = 0;
+    g_close_count = 0;
     g_send_count = 0;
     g_recv_count = 0;
     g_discarded_caps = 0;
     g_pending_cap = 0;
+    g_last_sent_cap = 0;
+    g_last_sent_reply_cap = 0;
+    g_last_sent_reply_rights = 0;
     g_last_send_timeout = 0;
     g_last_recv_timeout = 0;
     memset(&g_last_sent, 0, sizeof(g_last_sent));
@@ -325,8 +364,25 @@ int main(void) {
     assert(st == BHARAT_IPC_STATUS_OK);
     assert(g_last_send_timeout == 123);
 
-    // Legacy RPC fails closed before allocating an endpoint or sending work.
-    // This is resource-refusal coverage, not authenticated round-trip evidence.
+    // Invalid RPC arguments fail before allocating any endpoint.
+    clear_state();
+    st = bharat_ipc_call_ex(1, NULL, NULL, &output, buf, sizeof(buf), 0);
+    assert(st == BHARAT_IPC_STATUS_ERR_DECODE);
+    hdr = mk_hdr(10, 0);
+    hdr.flags = UINT32_C(1) << 31;
+    st = bharat_ipc_call_ex(1, &hdr, NULL, &output, buf, sizeof(buf), 0);
+    assert(st == BHARAT_IPC_STATUS_ERR_FLAGS);
+    hdr = mk_hdr(10, 1);
+    st = bharat_ipc_call_ex(1, &hdr, NULL, &output, buf, sizeof(buf), 0);
+    assert(st == BHARAT_IPC_STATUS_ERR_DECODE);
+    hdr = mk_hdr(10, 0);
+    hdr.reply_endpoint = 99;
+    st = bharat_ipc_call_ex(1, &hdr, NULL, &output, buf, sizeof(buf), 0);
+    assert(st == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+    assert(g_create_count == 0);
+
+    // 10,000 RPC timeout/error iterations must deterministically close both
+    // reply endpoint capabilities on every path and leave outputs untouched.
     clear_state();
     hdr = mk_hdr(10, 0);
     output = sentinel;
@@ -335,22 +391,37 @@ int main(void) {
         const uint64_t timeouts[] = {0U, 1U, UINT64_MAX};
         st = bharat_ipc_call_ex(1, &hdr, NULL, &output, buf,
                                 sizeof(buf), timeouts[i % 3]);
-        assert(st == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+        assert(st == BHARAT_IPC_STATUS_ERR_TIMEOUT);
         assert(memcmp(&output, &sentinel, sizeof(output)) == 0);
         for (uint32_t j = 0; j < sizeof(buf); ++j) assert(buf[j] == 'x');
     }
-    assert(g_create_count == 0);
-    assert(g_send_count == 0);
-    assert(g_recv_count == 0);
+    assert(g_create_count == 10000);
+    assert(g_send_count == 10000);
+    assert(g_recv_count == 10000);
+    assert(g_close_count == 20000);
 
-    st = bharat_ipc_call_ex(1, NULL, NULL, &output, buf, sizeof(buf), 0);
-    assert(st == BHARAT_IPC_STATUS_ERR_DECODE);
-    hdr.flags = UINT32_C(1) << 31;
-    st = bharat_ipc_call_ex(1, &hdr, NULL, &output, buf, sizeof(buf), 0);
-    assert(st == BHARAT_IPC_STATUS_ERR_FLAGS);
-    hdr = mk_hdr(10, 1);
-    st = bharat_ipc_call_ex(1, &hdr, NULL, &output, buf, sizeof(buf), 0);
-    assert(st == BHARAT_IPC_STATUS_ERR_DECODE);
+    // Authenticated RPC round-trip with dual capability transfer (authority + reply).
+    clear_state();
+    hdr = mk_hdr(55, 4);
+    hdr.capability_transfer = 77;
+    const uint32_t req_val = 0x11223344U;
+    const uint32_t rep_val = 0x55667788U;
+    bharat_ipc_msg_header_t reply_hdr = mk_hdr(55, 4);
+    reply_hdr.capability_transfer = 9999; /* Forged wire cap must be ignored */
+    memcpy(wire_buf, &reply_hdr, sizeof(reply_hdr));
+    memcpy(wire_buf + sizeof(reply_hdr), &rep_val, sizeof(rep_val));
+    queue_rx(wire_buf, sizeof(reply_hdr) + sizeof(rep_val));
+    g_pending_cap = 88; /* Kernel-verified envelope authority cap */
+    uint32_t out_val = 0;
+    st = bharat_ipc_call_ex(1, &hdr, &req_val, &output, &out_val, sizeof(out_val), 50);
+    assert(st == BHARAT_IPC_STATUS_OK);
+    assert(g_last_sent_cap == 77);
+    assert(g_last_sent_reply_cap == 2);
+    assert(g_last_sent_reply_rights == (1ULL << 2));
+    assert(output.message_id == 55);
+    assert(output.capability_transfer == 88);
+    assert(out_val == 0x55667788U);
+    assert(g_create_count == 1 && g_close_count == 2);
 
     printf("All IPC wire format tests passed!\n");
     return 0;

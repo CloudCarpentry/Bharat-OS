@@ -9,13 +9,18 @@ static struct { uint32_t ep, len; unsigned char bytes[128]; bool used; } packets
 void bharat_runtime_log(const char *msg) { (void)msg; }
 int bharat_sched_yield(void) { return 0; }
 
-/* Mock the real syscall boundary, including the inline endpoint wrappers. */
+/* Mock the real syscall boundary, including both legacy and V1 envelope receive wrappers. */
 long bh_syscall(long nr, long arg, long a2, long a3, long a4, long a5, long a6) {
-    (void)a2; (void)a3; (void)a4; (void)a5; (void)a6;
+    (void)a3; (void)a4; (void)a5; (void)a6;
+    if (nr == SYSCALL_CAPABILITY_INVOKE) {
+        const bharat_sys_cap_invoke_args_t *a = (const bharat_sys_cap_invoke_args_t *)(uintptr_t)arg;
+        if (!a || !a->cap_id || a->opcode != BH_ENDPOINT_OP_CLOSE) return -1;
+        return 0;
+    }
     if (!arg) return -1;
     if (nr == SYSCALL_ENDPOINT_SEND) {
         const bharat_sys_endpoint_send_args_t *a = (void *)(uintptr_t)arg;
-        if (!a->send_cap || !a->payload_ptr || a->payload_len > 128 || a->reserved0) return -1;
+        if (!a->send_cap || !a->payload_ptr || a->payload_len > 128) return -1;
         /* Authority-transfer mocks require a real fixture model; never infer it from headers. */
         if (a->cap_to_send) return -4;
         for (unsigned i = 0; i < 16; ++i) if (!packets[i].used) {
@@ -26,6 +31,26 @@ long bh_syscall(long nr, long arg, long a2, long a3, long a4, long a5, long a6) 
         return -3;
     }
     if (nr == SYSCALL_ENDPOINT_RECEIVE) {
+        if (a2 == (long)BH_IPC_RECEIVE_SELECTOR_V1) {
+            const bharat_sys_endpoint_receive_v1_args_t *a = (void *)(uintptr_t)arg;
+            if (a->version != BH_IPC_RECEIVE_ENVELOPE_VERSION_V1 ||
+                a->struct_size != sizeof(*a) ||
+                !a->recv_cap || !a->out_payload_ptr || !a->out_len_ptr || !a->out_envelope_ptr ||
+                a->out_envelope_capacity < sizeof(bh_ipc_receive_envelope_v1_t)) return -1;
+            *(uint32_t *)(uintptr_t)a->out_len_ptr = 0;
+            bh_ipc_receive_envelope_v1_t *env = (bh_ipc_receive_envelope_v1_t *)(uintptr_t)a->out_envelope_ptr;
+            memset(env, 0, sizeof(*env));
+            env->version = BH_IPC_RECEIVE_ENVELOPE_VERSION_V1;
+            env->struct_size = sizeof(*env);
+            for (unsigned i = 0; i < 16; ++i) if (packets[i].used && packets[i].ep == a->recv_cap) {
+                if (packets[i].len > a->out_payload_capacity) return -2;
+                memcpy((void *)(uintptr_t)a->out_payload_ptr, packets[i].bytes, packets[i].len);
+                *(uint32_t *)(uintptr_t)a->out_len_ptr = packets[i].len;
+                packets[i].used = false;
+                return 0;
+            }
+            return -8;
+        }
         const bharat_sys_endpoint_receive_args_t *a = (void *)(uintptr_t)arg;
         if (!a->recv_cap || !a->out_payload_ptr || !a->out_len_ptr) return -1;
         *(uint32_t *)(uintptr_t)a->out_len_ptr = 0;

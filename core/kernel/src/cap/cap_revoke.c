@@ -117,6 +117,36 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
     tables_to_lock[num_tables++] = table;
     tables_to_lock[num_tables++] = parent_table;
 
+    // Scan sibling chain to collect any intermediate sibling tables
+    spin_lock(&parent_table->lock);
+    if (parent_slot < BHARAT_ARRAY_SIZE(parent_table->entries)) {
+      capability_entry_t *p_ent = &parent_table->entries[parent_slot];
+      if (p_ent->in_use != 0U && p_ent->generation == parent_gen) {
+        bh_cap_locator_t s = p_ent->first_child;
+        while (!cap_locator_is_null(&s) && num_tables < 16) {
+          capability_table_t *st = cap_locator_resolve_table(&s);
+          if (st) {
+            bool found = false;
+            for (size_t k = 0; k < num_tables; k++) {
+              if (tables_to_lock[k] == st) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              tables_to_lock[num_tables++] = st;
+            }
+          }
+          if (st && s.slot < BHARAT_ARRAY_SIZE(st->entries)) {
+            s = st->entries[s.slot].next_sibling;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+    spin_unlock(&parent_table->lock);
+
     cap_lock_tables_sorted(tables_to_lock, num_tables);
 
     // Verify root hasn't been reallocated
@@ -135,7 +165,7 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
         while (!cap_locator_is_null(&sibling)) {
           capability_table_t *sibling_table =
               cap_locator_resolve_table(&sibling);
-          if (sibling_table != table && sibling_table != parent_table) {
+          if (sibling_table == NULL) {
             break;
           }
           if (sibling.slot >= BHARAT_ARRAY_SIZE(sibling_table->entries)) {
@@ -145,11 +175,8 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
               sibling.generation == root_gen) {
             if (!cap_locator_is_null(&prev)) {
               capability_table_t *prev_table = cap_locator_resolve_table(&prev);
-              if (prev_table == table) {
-                table->entries[prev.slot].next_sibling =
-                    root_entry->next_sibling;
-              } else if (prev_table == parent_table) {
-                parent_table->entries[prev.slot].next_sibling =
+              if (prev_table && prev.slot < BHARAT_ARRAY_SIZE(prev_table->entries)) {
+                prev_table->entries[prev.slot].next_sibling =
                     root_entry->next_sibling;
               }
             } else {
@@ -159,13 +186,7 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
           }
 
           prev = sibling;
-          if (sibling_table == table) {
-            sibling = table->entries[sibling.slot].next_sibling;
-          } else if (sibling_table == parent_table) {
-            sibling = parent_table->entries[sibling.slot].next_sibling;
-          } else {
-            break;
-          }
+          sibling = sibling_table->entries[sibling.slot].next_sibling;
         }
       }
     }
@@ -205,11 +226,6 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
     spin_unlock(&curr_table->lock);
 
     if (is_stale) {
-        // We cannot reliably traverse up or right from a stale node without risking dereferencing garbage.
-        // The safest fallback that avoids both partial revocation bugs and memory corruption is to return
-        // a defined error immediately rather than leaving the loop halfway through or panicking.
-        // Wait, if we return -3, the caller knows it failed. Since we haven't done destructive mutation yet,
-        // returning an error is perfectly safe here.
         if (tx) {
             atomic_set(&tx->state, BH_CAP_TX_ABORTED);
             cap_tx_release(current_core, tx_slot);
@@ -291,7 +307,7 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
         if ((tx->target_mask & (1U << c)) != 0) {
           uint64_t req_payload =
               cap_tx_pack_req((uint8_t)current_core, tx_slot, tx->generation,
-                              (uint8_t)BH_CAP_TX_OP_REVOKE);
+                              (uint8_t)BH_CAP_TX_OP_REVOKE_PREPARE);
           urpc_bootstrap_send(c, urpc_pack_msg(URPC_CAP_REVOKE, req_payload));
         }
       }
@@ -311,11 +327,13 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
       if (timed_out) {
         atomic_set(&tx->state, BH_CAP_TX_ABORTED);
         cap_tx_release(current_core, tx_slot);
-        // A timeout implies the remote core failed to process the revocation.
-        // We MUST NOT proceed to Pass 2 (freeing the local capability) because
-        // doing so would allow the slot to be reused locally while the remote
-        // core retains active authority. By returning here, we securely quarantine
-        // the entire subtree in CAP_STATE_REVOKING permanently.
+        // Quarantine the root in CAP_STATE_QUARANTINED and fail closed without
+        // freeing the slot while remote cores may still hold authority.
+        spin_lock(&table->lock);
+        if (root_entry->in_use != 0U && root_entry->generation == root_gen) {
+          root_entry->state = CAP_STATE_QUARANTINED;
+        }
+        spin_unlock(&table->lock);
         return K_ERR_TIMEOUT;
       }
 
@@ -345,17 +363,6 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
 
     // Prevent cross-core corruption/double-free on reallocated capabilities
     if (cap->in_use == 0U || cap->generation != current.generation) {
-        // Since we successfully passed Pass 1 (freezing), this should rarely happen unless
-        // another thread forcefully freed it. If it was concurrently freed, its subtree was
-        // also concurrently freed. We CANNOT `break` and skip the rest of the valid tree,
-        // nor can we safely read its pointers. But since we track parent links during descent,
-        // and we cannot use its `parent` pointer, we have a fundamental limitation.
-        // However, in our system, once a capability is `REVOKING`, no concurrent operation
-        // can legally free or mutate it except the thread that marked it.
-        // If it IS stale, it represents a catastrophic state machine violation.
-        // Returning an error is unsafe because it leaves the rest of the tree REVOKING indefinitely.
-        // The safest fallback is to simply `break` and accept the resource leak for the remaining
-        // nodes, as we cannot traverse upward without a stack or reliable pointers.
         spin_unlock(&curr_table->lock);
         break;
     }
@@ -371,10 +378,45 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
         continue; // Keep DIR_DOWN
     }
 
-    // Otherwise, we are at a leaf or coming up from children. We can now safely free this node.
+    // Otherwise, we are at a leaf or coming up from children. Wait for active pins if any.
+    if (cap->active_pins != 0U) {
+        spin_unlock(&curr_table->lock);
+        bh_kdeadline_t pin_deadline = bh_deadline_after_ns(5 * BH_KTIME_NS_PER_MS);
+        bool pin_timed_out = false;
+        while (true) {
+            spin_lock(&curr_table->lock);
+            bool drained = (cap->in_use == 0U || cap->generation != current.generation || cap->active_pins == 0U);
+            spin_unlock(&curr_table->lock);
+            if (drained) break;
+            if (bh_deadline_expired(pin_deadline)) {
+                pin_timed_out = true;
+                break;
+            }
+            extern void arch_cpu_relax(void);
+            arch_cpu_relax();
+        }
+        spin_lock(&curr_table->lock);
+        if (cap->in_use == 0U || cap->generation != current.generation) {
+            spin_unlock(&curr_table->lock);
+            break;
+        }
+        if (pin_timed_out && cap->active_pins != 0U) {
+            cap->state = CAP_STATE_QUARANTINED;
+            spin_unlock(&curr_table->lock);
+            return K_ERR_TIMEOUT;
+        }
+    }
+
+    cap_type_t released_type = cap->type;
+    uint64_t released_obj_ref = cap->object_ref;
+    uint64_t released_rights = cap->rights;
+
+    // We can now safely free this node.
     cap->rights = 0U;
     cap->flags = 0U;
     cap->object_ref = 0U;
+    cap->active_pins = 0U;
+    cap->scope_id = 0U;
 
     cap->parent = cap_locator_null();
     cap->first_child = cap_locator_null();
@@ -386,6 +428,8 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
     bh_id_allocator_free(&curr_table->id_allocator, current.slot);
 
     spin_unlock(&curr_table->lock);
+
+    cap_endpoint_ref_release(released_type, released_obj_ref, released_rights);
 
     // If we just processed the root, we are completely done.
     if (current.owner_core == table->owner_core &&

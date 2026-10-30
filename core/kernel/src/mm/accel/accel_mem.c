@@ -1,6 +1,7 @@
 #include "../../include/mm/accel_mem.h"
 #include "../../include/kernel/status.h"
 #include "../../include/mm/pmm.h"
+#include "mm.h"
 #include "../../include/mm/dma.h"
 #include "../../include/hal/hal_dma.h"
 #include <stddef.h>

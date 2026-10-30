@@ -82,6 +82,10 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
             continue;
         }
 
+        bharat_runtime_log("INIT: TRY_LAUNCH ");
+        bharat_runtime_log(sr->desc->name ? sr->desc->name : "unnamed");
+        bharat_runtime_log("\n");
+
         sr->state = INIT_SERVICE_STATE_SPAWN_REQUESTED;
         sr->namesvc_cap = sr->desc->id == INIT_SVC_NAMESVC ? 0 :
             rt->services[INIT_SVC_NAMESVC].launch.service_send_cap;
@@ -131,6 +135,9 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
                 sr->last_error = -ENOSPC;
             }
         } else {
+            bharat_runtime_log("INIT: LAUNCH_FAILED ");
+            bharat_runtime_log(sr->desc->name ? sr->desc->name : "unnamed");
+            bharat_runtime_log("\n");
             sr->state = INIT_SERVICE_STATE_FAILED;
         }
     }
@@ -198,7 +205,9 @@ int init_service_apply_event(init_service_runtime_t *sr, const bh_bootstrap_serv
 static void converge_class(init_runtime_t *rt, init_boot_class_t cls) {
     for (;;) {
         try_launch_services(rt, cls);
-        if (any_failed_in_class(rt, cls) || all_ready_in_class(rt, cls)) return;
+        if (any_failed_in_class(rt, cls) || all_ready_in_class(rt, cls)) {
+            return;
+        }
         bool pending = false;
         for (size_t i = 0; i < rt->manifest_count; ++i) {
             init_service_runtime_t *sr = &rt->services[rt->service_order[i]];

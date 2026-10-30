@@ -1,19 +1,19 @@
 #define BHARAT_HOST_TEST 1
-#include <stdio.h>
 #include <assert.h>
-#include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 
+#include "tlb_pending.h"
+#include <arch/arch_caps.h>
+#include <bharat/cpu_local.h>
+#include <bharat/uapi/subsys/msg_types.h>
+#include <hal/hal.h>
+#include <hal/hal_timer.h>
 #include <hal/hal_tlb.h>
 #include <mm/aspace.h>
 #include <mm/mm_remote.h>
-#include <bharat/cpu_local.h>
-#include <hal/hal.h>
-#include <hal/hal_timer.h>
 #include <mm/tlb.h>
-#include "tlb_pending.h"
-#include <arch/arch_caps.h>
-#include <bharat/uapi/subsys/msg_types.h>
 #include <mm/tlb_internal.h>
 
 // --- Wire structure definitions matching shootdown.c mocks ---
@@ -41,6 +41,11 @@ typedef struct {
     uint32_t header_crc;
 } bharat_msg_header_t;
 
+int bharat_msg_header_decode(const uint8_t *buf, size_t buf_len,
+                                                          bharat_msg_header_t *hdr);
+int bharat_msg_header_encode(const bharat_msg_header_t *hdr, uint8_t *buf,
+                                                          size_t buf_len);
+
 typedef struct {
     uint64_t aspace_id;
     uint64_t va_start;
@@ -56,7 +61,8 @@ typedef struct {
 typedef struct bharat_transport {
     const struct {
         int (*send)(struct bharat_transport* self, const uint8_t* buf, size_t len);
-        int (*recv)(struct bharat_transport* self, uint8_t* buf, size_t cap, size_t* out_len);
+        int (*recv)(struct bharat_transport *self, uint8_t *buf, size_t cap,
+                                size_t *out_len);
         uint32_t (*get_caps)(struct bharat_transport* self);
         size_t (*get_mtu)(struct bharat_transport* self);
         int (*poll)(struct bharat_transport* self, int timeout_ms);
@@ -83,12 +89,12 @@ static bharat_transport_t g_mock_transports[MAX_CPUS];
 static bool g_simulate_send_failure = false;
 
 // --- Extern Declarations ---
-extern kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
-                                uint64_t va,
-                                uint64_t len,
-                                uint32_t type,
-                                tlb_failure_policy_t failure_policy);
-extern int bharat_monitor_v1_send_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, uint64_t reqid, void* ctx);
+extern kstatus_t
+vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace, uint64_t va, uint64_t len,
+                                                      uint32_t type, tlb_failure_policy_t failure_policy);
+extern int bharat_monitor_v1_send_tlb_invalidate(
+        bharat_transport_t *t, int dst,
+        const bharat_monitor_v1_TlbInvalidateReq_t *req, uint64_t reqid, void *ctx);
 
 // --- Global Mocks and Globals ---
 uint32_t g_active_core_count = 4;
@@ -111,20 +117,15 @@ void kernel_panic(const char* m) {
     g_panic_message = m;
 }
 
-uint32_t hal_cpu_get_id(void) {
-    return g_current_cpu_id;
-}
+uint32_t hal_cpu_get_id(void) { return g_current_cpu_id; }
 
-uint64_t hal_timer_monotonic_ticks(void) {
-    return g_fake_ticks;
-}
+uint64_t hal_timer_monotonic_ticks(void) { return g_fake_ticks; }
 
-uint64_t hal_timer_read_freq(void) {
-    return g_fake_freq;
-}
+uint64_t hal_timer_read_freq(void) { return g_fake_freq; }
 
 bool hal_timer_monotonic_ns(uint64_t *out_ns) {
-    if (out_ns) *out_ns = g_fake_ticks * 1000000ULL;
+    if (out_ns)
+        *out_ns = g_fake_ticks * 1000000ULL;
     return true;
 }
 
@@ -145,8 +146,14 @@ const hal_tlb_caps_t *hal_tlb_caps(void) {
     return &caps;
 }
 
-void console_log(int level, const char* fmt, ...) { (void)level; (void)fmt; }
-void console_write_raw(const char* s, size_t len) { (void)s; (void)len; }
+void console_log(int level, const char *fmt, ...) {
+    (void)level;
+    (void)fmt;
+}
+void console_write_raw(const char *s, size_t len) {
+    (void)s;
+    (void)len;
+}
 
 bool aspace_is_valid_for_tlb(address_space_t *aspace) {
     return aspace != NULL && !(aspace->flags & ASPACE_STATE_POISONED);
@@ -186,23 +193,29 @@ void arch_cpu_relax(void) {
         }
         if (g_duplicate_ack_test_active) {
             if (g_fake_ticks == 3) {
-                printf("[DEBUG] CPU0 inbox before: head=%d, tail=%d. CPU1 inbox before: head=%d, tail=%d\n",
-                       g_core_inbox[0].head, g_core_inbox[0].tail, g_core_inbox[1].head, g_core_inbox[1].tail);
+                printf("[DEBUG] CPU0 inbox before: head=%d, tail=%d. CPU1 inbox "
+                              "before: head=%d, tail=%d\n",
+                              g_core_inbox[0].head, g_core_inbox[0].tail, g_core_inbox[1].head,
+                              g_core_inbox[1].tail);
                 process_core_messages(1);
-                printf("[DEBUG] CPU0 inbox after CPU1 processes: head=%d, tail=%d. CPU1 inbox after: head=%d, tail=%d\n",
-                       g_core_inbox[0].head, g_core_inbox[0].tail, g_core_inbox[1].head, g_core_inbox[1].tail);
+                printf("[DEBUG] CPU0 inbox after CPU1 processes: head=%d, tail=%d. "
+                              "CPU1 inbox after: head=%d, tail=%d\n",
+                              g_core_inbox[0].head, g_core_inbox[0].tail, g_core_inbox[1].head,
+                              g_core_inbox[1].tail);
                 mock_queue_t* inbox = &g_core_inbox[0];
                 int next_tail = (inbox->tail + 1) % MAX_MESSAGES;
                 inbox->queue[inbox->tail] = inbox->queue[inbox->head];
                 inbox->tail = next_tail;
-                printf("[DEBUG] After duplicate queued: head=%d, tail=%d\n", inbox->head, inbox->tail);
+                printf("[DEBUG] After duplicate queued: head=%d, tail=%d\n",
+                              inbox->head, inbox->tail);
                 fflush(NULL);
             }
         }
         if (g_interleave_test_active) {
             if (g_fake_ticks == 3) {
                 process_core_messages(1);
-                // Insert unrelated IPC frame in the inbox of CPU 0 after the real response
+                // Insert unrelated IPC frame in the inbox of CPU 0 after the real
+                // response
                 mock_queue_t* inbox = &g_core_inbox[0];
                 int next_tail = (inbox->tail + 1) % MAX_MESSAGES;
                 inbox->queue[next_tail].len = 44;
@@ -235,8 +248,12 @@ void hal_tlb_invalidate_local_aspace(uint64_t aspace_id) {
     }
 }
 
-int tlb_invalidate_local(vm_aspace_t *as, uintptr_t va, size_t len, tlb_inv_kind_t kind) {
-    (void)as; (void)va; (void)len; (void)kind;
+int tlb_invalidate_local(vm_aspace_t *as, uintptr_t va, size_t len,
+                                                  tlb_inv_kind_t kind) {
+    (void)as;
+    (void)va;
+    (void)len;
+    (void)kind;
     return 0;
 }
 
@@ -246,13 +263,25 @@ int g_local_range_flushes = 0;
 int g_local_asid_flushes = 0;
 int g_local_all_flushes = 0;
 
-static void mock_flush_page_local(virt_addr_t vaddr) { (void)vaddr; g_local_page_flushes++; }
-static void mock_flush_range_local(virt_addr_t start, size_t len) { (void)start; (void)len; g_local_range_flushes++; }
+static void mock_flush_page_local(virt_addr_t vaddr) {
+    (void)vaddr;
+    g_local_page_flushes++;
+}
+static void mock_flush_range_local(virt_addr_t start, size_t len) {
+    (void)start;
+    (void)len;
+    g_local_range_flushes++;
+}
 static void mock_flush_all_local(void) { g_local_all_flushes++; }
-static void mock_flush_asid_local(uint16_t asid) { (void)asid; g_local_asid_flushes++; }
+static void mock_flush_asid_local(uint16_t asid) {
+    (void)asid;
+    g_local_asid_flushes++;
+}
 
-static int mock_transport_send(struct bharat_transport* t, const uint8_t* buf, size_t len) {
-    if (g_simulate_send_failure) return -1;
+static int mock_transport_send(struct bharat_transport *t, const uint8_t *buf,
+                                                              size_t len) {
+    if (g_simulate_send_failure)
+        return -1;
 
     bharat_msg_header_t hdr;
     // Decode with mock decode to inspect destination
@@ -262,11 +291,13 @@ static int mock_transport_send(struct bharat_transport* t, const uint8_t* buf, s
     hdr.dst_node      = bharat_load_le32(buf + 0x20);
 
     uint32_t dst = hdr.dst_node;
-    if (dst >= MAX_CPUS) return -1;
+    if (dst >= MAX_CPUS)
+        return -1;
 
     mock_queue_t* inbox = &g_core_inbox[dst];
     int next_tail = (inbox->tail + 1) % MAX_MESSAGES;
-    if (next_tail == inbox->head) return -1; // Full
+    if (next_tail == inbox->head)
+        return -1; // Full
 
     memcpy(inbox->queue[inbox->tail].data, buf, len);
     inbox->queue[inbox->tail].len = len;
@@ -274,13 +305,16 @@ static int mock_transport_send(struct bharat_transport* t, const uint8_t* buf, s
     return 0;
 }
 
-static int mock_transport_recv(struct bharat_transport* t, uint8_t* buf, size_t max, size_t* rx_len) {
+static int mock_transport_recv(struct bharat_transport *t, uint8_t *buf,
+                                                              size_t max, size_t *rx_len) {
     uint32_t current_core = g_current_cpu_id;
     mock_queue_t* inbox = &g_core_inbox[current_core];
-    if (inbox->head == inbox->tail) return -1; // Empty
+    if (inbox->head == inbox->tail)
+        return -1; // Empty
 
     mock_msg_t* m = &inbox->queue[inbox->head];
-    if (m->len > max) return -1;
+    if (m->len > max)
+        return -1;
 
     memcpy(buf, m->data, m->len);
     *rx_len = m->len;
@@ -288,9 +322,13 @@ static int mock_transport_recv(struct bharat_transport* t, uint8_t* buf, size_t 
     return 0;
 }
 
-int bharat_monitor_v1_send_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, uint64_t reqid, void* ctx) {
+int bharat_monitor_v1_send_tlb_invalidate(
+        bharat_transport_t *t, int dst,
+        const bharat_monitor_v1_TlbInvalidateReq_t *req, uint64_t reqid,
+        void *ctx) {
     (void)ctx;
-    if (!t || !t->ops || !t->ops->send) return -1;
+    if (!t || !t->ops || !t->ops->send)
+        return -1;
     bharat_msg_header_t hdr = {0};
     hdr.version_major = 1;
     hdr.version_minor = 0;
@@ -301,10 +339,12 @@ int bharat_monitor_v1_send_tlb_invalidate(bharat_transport_t* t, int dst, const 
     hdr.request_id    = reqid;
     hdr.src_node      = hal_cpu_get_id();
     hdr.dst_node      = dst;
-    hdr.total_len     = BHARAT_MSG_HEADER_MIN_LEN + sizeof(bharat_monitor_v1_TlbInvalidateReq_t);
+    hdr.total_len =
+            BHARAT_MSG_HEADER_MIN_LEN + sizeof(bharat_monitor_v1_TlbInvalidateReq_t);
 
     uint8_t buf[256];
-    if (bharat_msg_header_encode(&hdr, buf, sizeof(buf)) != BHARAT_MSG_OK) return -1;
+    if (bharat_msg_header_encode(&hdr, buf, sizeof(buf)) != BHARAT_MSG_OK)
+        return -1;
     uint8_t* payload = buf + BHARAT_MSG_HEADER_MIN_LEN;
     bharat_store_le64(payload + 0, req->aspace_id);
     bharat_store_le64(payload + 8, req->va_start);
@@ -316,16 +356,30 @@ int bharat_monitor_v1_send_tlb_invalidate(bharat_transport_t* t, int dst, const 
 }
 
 bharat_transport_t* transport_for_core(int core) {
-    if (core >= (int)g_active_core_count) return NULL;
+    if (core >= (int)g_active_core_count)
+        return NULL;
     return &g_mock_transports[core];
 }
 
 // Unused bootstrap/IPI mocks
-void hal_ipi_send(uint32_t core, uint32_t ipi) { (void)core; (void)ipi; }
-int urpc_bootstrap_recv(int c, uint64_t *m) { (void)c; (void)m; return -1; }
-void cap_handle_delegate_req(uint64_t p, uint32_t s) { (void)p; (void)s; }
+void hal_ipi_send(uint32_t core, uint32_t ipi) {
+    (void)core;
+    (void)ipi;
+}
+int urpc_bootstrap_recv(int c, uint64_t *m) {
+    (void)c;
+    (void)m;
+    return -1;
+}
+void cap_handle_delegate_req(uint64_t p, uint32_t s) {
+    (void)p;
+    (void)s;
+}
 void cap_handle_delegate_ack(uint64_t p) { (void)p; }
-void cap_handle_revoke_req(uint64_t p, uint32_t s) { (void)p; (void)s; }
+void cap_handle_revoke_req(uint64_t p, uint32_t s) {
+    (void)p;
+    (void)s;
+}
 void cap_handle_revoke_ack(uint64_t p) { (void)p; }
 
 // --- Test Setup ---
@@ -358,17 +412,16 @@ static void setup_test(void) {
 
     static struct {
         int (*send)(struct bharat_transport* self, const uint8_t* buf, size_t len);
-        int (*recv)(struct bharat_transport* self, uint8_t* buf, size_t cap, size_t* out_len);
+        int (*recv)(struct bharat_transport *self, uint8_t *buf, size_t cap,
+                                size_t *out_len);
         uint32_t (*get_caps)(struct bharat_transport* self);
         size_t (*get_mtu)(struct bharat_transport* self);
         int (*poll)(struct bharat_transport* self, int timeout_ms);
-    } ops = {
-        .send = mock_transport_send,
+    } ops = {.send = mock_transport_send,
         .recv = mock_transport_recv,
         .get_caps = NULL,
         .get_mtu = NULL,
-        .poll = NULL
-    };
+                      .poll = NULL};
 
     for (int i = 0; i < MAX_CPUS; i++) {
         g_mock_transports[i].ops = (void*)&ops;
@@ -392,13 +445,16 @@ void test_single_remote_ack(void) {
     printf("Running test_single_remote_ack...\n");
     setup_test();
 
-    address_space_t as = { .object_id = 42, .active_mask = (1ULL << 0) | (1ULL << 1), .tlb_gen = 100 };
+    address_space_t as = {.object_id = 42,
+                                                .active_mask = (1ULL << 0) | (1ULL << 1),
+                                                .tlb_gen = 100};
     g_cpu_locals[0].current_as_id = 42;
     g_cpu_locals[1].current_as_id = 42;
 
     // CPU 0 initiates shootdown
     g_current_cpu_id = 0;
-    kstatus_t status = vmm_send_tlb_invalidate_ex(&as, 0x1000, 0x1000, 0, TLB_FAIL_RETURN_ERROR);
+    kstatus_t status =
+            vmm_send_tlb_invalidate_ex(&as, 0x1000, 0x1000, 0, TLB_FAIL_RETURN_ERROR);
 
     assert(status == K_OK);
     printf("  -> PASSED\n");
@@ -408,13 +464,16 @@ void test_non_zero_initiator(void) {
     printf("Running test_non_zero_initiator...\n");
     setup_test();
 
-    address_space_t as = { .object_id = 42, .active_mask = (1ULL << 2) | (1ULL << 3), .tlb_gen = 100 };
+    address_space_t as = {.object_id = 42,
+                                                .active_mask = (1ULL << 2) | (1ULL << 3),
+                                                .tlb_gen = 100};
     g_cpu_locals[2].current_as_id = 42;
     g_cpu_locals[3].current_as_id = 42;
 
     // CPU 2 initiates shootdown
     g_current_cpu_id = 2;
-    kstatus_t status = vmm_send_tlb_invalidate_ex(&as, 0x1000, 0x1000, 0, TLB_FAIL_RETURN_ERROR);
+    kstatus_t status =
+            vmm_send_tlb_invalidate_ex(&as, 0x1000, 0x1000, 0, TLB_FAIL_RETURN_ERROR);
 
     assert(status == K_OK);
     printf("  -> PASSED\n");
@@ -424,7 +483,9 @@ void test_page_range_aspace_invalidation_dispatch(void) {
     printf("Running test_page_range_aspace_invalidation_dispatch...\n");
     setup_test();
 
-    address_space_t as = { .object_id = 42, .active_mask = (1ULL << 0) | (1ULL << 1), .tlb_gen = 100 };
+    address_space_t as = {.object_id = 42,
+                                                .active_mask = (1ULL << 0) | (1ULL << 1),
+                                                .tlb_gen = 100};
     g_cpu_locals[0].current_as_id = 42;
     g_cpu_locals[1].current_as_id = 42;
 
@@ -448,7 +509,9 @@ void test_delayed_ack(void) {
     printf("Running test_delayed_ack...\n");
     setup_test();
 
-    address_space_t as = { .object_id = 42, .active_mask = (1ULL << 0) | (1ULL << 1), .tlb_gen = 100 };
+    address_space_t as = {.object_id = 42,
+                                                .active_mask = (1ULL << 0) | (1ULL << 1),
+                                                .tlb_gen = 100};
     g_cpu_locals[0].current_as_id = 42;
     g_cpu_locals[1].current_as_id = 42;
 
@@ -456,7 +519,8 @@ void test_delayed_ack(void) {
     g_cooperative_yield_enabled = false;
     g_delayed_ack_test_active = true;
 
-    kstatus_t status = vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_RETURN_ERROR);
+    kstatus_t status =
+            vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_RETURN_ERROR);
     assert(status == K_OK);
     printf("  -> PASSED\n");
 }
@@ -465,7 +529,9 @@ void test_duplicate_ack(void) {
     printf("Running test_duplicate_ack...\n");
     setup_test();
 
-    address_space_t as = { .object_id = 42, .active_mask = (1ULL << 0) | (1ULL << 1), .tlb_gen = 100 };
+    address_space_t as = {.object_id = 42,
+                                                .active_mask = (1ULL << 0) | (1ULL << 1),
+                                                .tlb_gen = 100};
     g_cpu_locals[0].current_as_id = 42;
     g_cpu_locals[1].current_as_id = 42;
 
@@ -476,7 +542,8 @@ void test_duplicate_ack(void) {
     tlb_pending_stats_t* stats = tlb_pending_get_stats(0);
     uint64_t initial_dups = stats->duplicate_acks;
 
-    kstatus_t status = vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_RETURN_ERROR);
+    kstatus_t status =
+            vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_RETURN_ERROR);
     assert(status == K_OK);
 
     assert(stats->duplicate_acks == initial_dups + 1);
@@ -488,13 +555,16 @@ void test_stale_generation_ack(void) {
     printf("Running test_stale_generation_ack...\n");
     setup_test();
 
-    address_space_t as = { .object_id = 42, .active_mask = (1ULL << 0) | (1ULL << 1), .tlb_gen = 100 };
+    address_space_t as = {.object_id = 42,
+                                                .active_mask = (1ULL << 0) | (1ULL << 1),
+                                                .tlb_gen = 100};
     g_cpu_locals[0].current_as_id = 42;
     g_cpu_locals[1].current_as_id = 42;
 
     g_current_cpu_id = 0;
 
-    // Allocate transaction manually to get a req_id with an old generation/sequence
+    // Allocate transaction manually to get a req_id with an old
+    // generation/sequence
     uint32_t reqid_old = 0;
     int slot = tlb_pending_alloc(42, 1ULL << 1, &reqid_old);
     tlb_pending_free(0, slot);
@@ -517,7 +587,9 @@ void test_interleaving_unrelated_ipc(void) {
     printf("Running test_interleaving_unrelated_ipc...\n");
     setup_test();
 
-    address_space_t as = { .object_id = 42, .active_mask = (1ULL << 0) | (1ULL << 1), .tlb_gen = 100 };
+    address_space_t as = {.object_id = 42,
+                                                .active_mask = (1ULL << 0) | (1ULL << 1),
+                                                .tlb_gen = 100};
     g_cpu_locals[0].current_as_id = 42;
     g_cpu_locals[1].current_as_id = 42;
 
@@ -528,7 +600,8 @@ void test_interleaving_unrelated_ipc(void) {
     tlb_pending_stats_t* stats = tlb_pending_get_stats(0);
     uint64_t initial_acks = stats->acks_received;
 
-    kstatus_t status = vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_RETURN_ERROR);
+    kstatus_t status =
+            vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_RETURN_ERROR);
     assert(status == K_OK);
 
     assert(stats->acks_received == initial_acks + 1);
@@ -539,7 +612,9 @@ void test_one_target_missing_timeout_retry(void) {
     printf("Running test_one_target_missing_timeout_retry...\n");
     setup_test();
 
-    address_space_t as = { .object_id = 42, .active_mask = (1ULL << 0) | (1ULL << 1) | (1ULL << 2), .tlb_gen = 100 };
+    address_space_t as = {.object_id = 42,
+                                                .active_mask = (1ULL << 0) | (1ULL << 1) | (1ULL << 2),
+                                                .tlb_gen = 100};
     g_cpu_locals[0].current_as_id = 42;
     g_cpu_locals[1].current_as_id = 42;
     g_cpu_locals[2].current_as_id = 42;
@@ -552,9 +627,15 @@ void test_one_target_missing_timeout_retry(void) {
     int slot = tlb_pending_alloc(42, (1ULL << 1) | (1ULL << 2), &reqid);
 
     // We send requests manually to CPU 1 and 2 using the public async function
-    bharat_monitor_v1_TlbInvalidateReq_t req = { .aspace_id = 42, .va_start = 0x1000, .length = 4096, .type = 0, .generation = 100 };
-    bharat_monitor_v1_send_tlb_invalidate(transport_for_core(1), 1, &req, reqid, NULL);
-    bharat_monitor_v1_send_tlb_invalidate(transport_for_core(2), 2, &req, reqid, NULL);
+    bharat_monitor_v1_TlbInvalidateReq_t req = {.aspace_id = 42,
+                                                                                            .va_start = 0x1000,
+                                                                                            .length = 4096,
+                                                                                            .type = 0,
+                                                                                            .generation = 100};
+    bharat_monitor_v1_send_tlb_invalidate(transport_for_core(1), 1, &req, reqid,
+                                                                                NULL);
+    bharat_monitor_v1_send_tlb_invalidate(transport_for_core(2), 2, &req, reqid,
+                                                                                NULL);
 
     // CPU 1 processes and ACKs, CPU 2 is missing
     process_core_messages(1);
@@ -575,34 +656,41 @@ void test_failure_policies(void) {
     printf("Running test_failure_policies...\n");
 
     setup_test();
-    address_space_t as = { .object_id = 42, .active_mask = (1ULL << 0) | (1ULL << 1), .tlb_gen = 100 };
+    address_space_t as = {.object_id = 42,
+                                                .active_mask = (1ULL << 0) | (1ULL << 1),
+                                                .tlb_gen = 100};
     g_cpu_locals[0].current_as_id = 42;
     g_cpu_locals[1].current_as_id = 42;
     g_current_cpu_id = 0;
 
     // Policy: RETURN_ERROR
     g_cooperative_yield_enabled = false; // Freeze other cores to force timeout!
-    kstatus_t status = vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_RETURN_ERROR);
+    kstatus_t status =
+            vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_RETURN_ERROR);
     assert(status == K_ERR_TIMEOUT);
     assert(!g_panic_triggered);
 
     // Policy: ISOLATE_ASPACE
     setup_test();
     g_cooperative_yield_enabled = false;
-    status = vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_ISOLATE_ASPACE);
+    status =
+            vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_ISOLATE_ASPACE);
     assert(status == K_ERR_TIMEOUT);
     assert(as.flags & ASPACE_STATE_POISONED); // ASpace marked poisoned!
 
     // Verify isolation and mutation rejection end-to-end!
-    // Since aspace is poisoned/isolated, subsequent invalidation/mutation checks should fail closed
-    kstatus_t bad_status = vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_RETURN_ERROR);
+    // Since aspace is poisoned/isolated, subsequent invalidation/mutation checks
+    // should fail closed
+    kstatus_t bad_status =
+            vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_RETURN_ERROR);
     assert(bad_status == K_ERR_INVALID_ARG);
 
     // Policy: KERNEL_PANIC
     setup_test();
     as.flags = 0; // Reset poisoned flag so it enters wait loop
     g_cooperative_yield_enabled = false;
-    status = vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_KERNEL_PANIC);
+    status =
+            vmm_send_tlb_invalidate_ex(&as, 0x1000, 4096, 0, TLB_FAIL_KERNEL_PANIC);
     assert(g_panic_triggered);
 
     printf("  -> PASSED\n");

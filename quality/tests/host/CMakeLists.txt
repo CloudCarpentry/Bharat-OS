@@ -1,6 +1,24 @@
 # SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.20)
 
+include_directories(
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/interface/uapi
+    ${CMAKE_SOURCE_DIR}/interface
+    ${CMAKE_SOURCE_DIR}/core/lib/handle
+    ${CMAKE_SOURCE_DIR}/core/lib/ipc/include
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/include
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
+    ${CMAKE_SOURCE_DIR}/core/boot/include
+    ${CMAKE_BINARY_DIR}/generated/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/kernel
+    ${CMAKE_SOURCE_DIR}
+)
+
 option(BHARAT_HOST_TESTS_TLB_ONLY "Build only focused TLB shootdown host tests" OFF)
 
 # ── Bounded TLB Shootdown Host Tests (Epic #796) ───────────────────────────
@@ -259,7 +277,7 @@ add_test(NAME host_test_cpu_partition COMMAND host_test_cpu_partition)
 set_tests_properties(host_test_cpu_partition PROPERTIES LABELS "scheduler")
 
 # Phase 3: Core IPC/Profile Tests
-add_executable(test_ipc_profile test_ipc_profile.c ${CMAKE_SOURCE_DIR}/core/kernel/src/profile/profile.c ${CMAKE_SOURCE_DIR}/core/services/core/ipcmgr/ipc_traffic.c)
+add_executable(test_ipc_profile test_ipc_profile.c ${CMAKE_SOURCE_DIR}/core/kernel/src/profile/profile.c ${CMAKE_SOURCE_DIR}/core/services/core/ipcmgr/ipc_traffic.c ${CMAKE_SOURCE_DIR}/core/kernel/src/ipc/ipc_profile_policy.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/mem_model.c)
 target_include_directories(test_ipc_profile PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include)
 add_test(NAME host_test_ipc_profile COMMAND test_ipc_profile)
 set_tests_properties(host_test_ipc_profile PROPERTIES LABELS "ipc")
@@ -311,7 +329,7 @@ add_executable(test_netmgr_address_table services/test_netmgr_address_table.c ${
 target_include_directories(test_netmgr_address_table PRIVATE ${CMAKE_SOURCE_DIR}/core/services/netmgr/src ${CMAKE_SOURCE_DIR}/core/services/netmgr/include ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include ${CMAKE_SOURCE_DIR}/core/lib/net/include ${CMAKE_SOURCE_DIR}/core/lib/runtime/include)
 add_test(NAME host_test_netmgr_address_table COMMAND test_netmgr_address_table)
 
-add_executable(test_pmm_pcache test_pmm_pcache.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/pmm/pmm_init.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/pmm/pmm_buddy.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/pmm/pmm_fault.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/pmm/pmm_pcache.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/pmm/numa.c)
+add_executable(test_pmm_pcache test_pmm_pcache.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/pmm/pmm_pcache.c)
 target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_pmm_pcache COMMAND test_pmm_pcache)
 set_tests_properties(host_test_pmm_pcache PROPERTIES LABELS "pmm")
@@ -323,23 +341,23 @@ add_executable(test_netmgr_interface_table services/test_netmgr_interface_table.
 target_include_directories(test_netmgr_interface_table PRIVATE ${CMAKE_SOURCE_DIR}/core/services/netmgr/src ${CMAKE_SOURCE_DIR}/core/services/netmgr/include ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include ${CMAKE_SOURCE_DIR}/core/lib/net/include ${CMAKE_SOURCE_DIR}/core/lib/runtime/include)
 add_test(NAME host_test_netmgr_interface_table COMMAND test_netmgr_interface_table)
 
-add_executable(test_smp_tlb_active_cores test_smp_tlb_active_cores.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_shootdown.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_pending.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_stats.c host_stubs.c ${CMAKE_SOURCE_DIR}/core/kernel/src/lib/base/string.c)
-target_include_directories(test_smp_tlb_active_cores PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_BINARY_DIR}/generated/include ${CMAKE_SOURCE_DIR}/core/services/monitor/generated)
+add_executable(test_smp_tlb_active_cores test_smp_tlb_active_cores.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_shootdown.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_pending.c ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_stats.c ${CMAKE_SOURCE_DIR}/core/kernel/src/time/ktime.c ${CMAKE_SOURCE_DIR}/core/lib/msg/wire.c host_stubs.c ${CMAKE_SOURCE_DIR}/core/kernel/src/lib/base/string.c)
+target_include_directories(test_smp_tlb_active_cores PRIVATE ${CMAKE_SOURCE_DIR}/core/lib/runtime/include ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_BINARY_DIR}/generated/include ${CMAKE_SOURCE_DIR}/core/services/monitor/generated)
 add_test(NAME host_test_smp_tlb_active_cores COMMAND test_smp_tlb_active_cores)
 
 # Memory host conformance expansion (2026-03-23)
 # HAL contracts + generic PT/TLB contracts
-add_executable(host_test_hal_pt_common ${CMAKE_SOURCE_DIR}/quality/tests/mm/pt_common_tests.c ${CMAKE_SOURCE_DIR}/core/hal/common/hal_pt.c)
+add_executable(host_test_hal_pt_common ${CMAKE_SOURCE_DIR}/quality/tests/mm/pt_common_tests.c ${CMAKE_SOURCE_DIR}/core/hal/common/hal_pt.c host_stubs.c)
 target_include_directories(host_test_hal_pt_common PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_hal_pt_common COMMAND host_test_hal_pt_common)
 set_tests_properties(host_test_hal_pt_common PROPERTIES LABELS "vm")
 
-add_executable(host_test_hal_pt_fallbacks ${CMAKE_SOURCE_DIR}/quality/tests/test_hal_pt_fallbacks.c ${CMAKE_SOURCE_DIR}/core/hal/common/hal_pt.c)
+add_executable(host_test_hal_pt_fallbacks ${CMAKE_SOURCE_DIR}/quality/tests/test_hal_pt_fallbacks.c ${CMAKE_SOURCE_DIR}/core/hal/common/hal_pt.c host_stubs.c)
 target_include_directories(host_test_hal_pt_fallbacks PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_hal_pt_fallbacks COMMAND host_test_hal_pt_fallbacks)
 set_tests_properties(host_test_hal_pt_fallbacks PROPERTIES LABELS "vm")
 
-add_executable(host_test_hal_caps_consistency ${CMAKE_SOURCE_DIR}/quality/tests/test_hal_caps_consistency.c ${CMAKE_SOURCE_DIR}/core/hal/common/hal_pt.c)
+add_executable(host_test_hal_caps_consistency ${CMAKE_SOURCE_DIR}/quality/tests/test_hal_caps_consistency.c ${CMAKE_SOURCE_DIR}/core/hal/common/hal_pt.c host_stubs.c)
 target_include_directories(host_test_hal_caps_consistency PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_hal_caps_consistency COMMAND host_test_hal_caps_consistency)
 
@@ -480,7 +498,7 @@ target_include_directories(test_vm_ipc_boundary PRIVATE
 add_test(NAME host_test_vm_ipc_boundary COMMAND test_vm_ipc_boundary)
 set_tests_properties(host_test_vm_ipc_boundary PROPERTIES LABELS "ipc;security;p0;vm")
 
-add_executable(test_vm_manager test_vm_manager.c ${CMAKE_SOURCE_DIR}/core/services/vm_manager/vm_manager.c ${CMAKE_SOURCE_DIR}/core/lib/ipc/src/ipc.c)
+add_executable(test_vm_manager test_vm_manager.c ${CMAKE_SOURCE_DIR}/core/services/vm_manager/vm_manager.c ${CMAKE_SOURCE_DIR}/core/lib/handle/handle_table.c ${CMAKE_SOURCE_DIR}/core/lib/ipc/src/ipc.c)
 target_include_directories(test_vm_manager PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/ipc/include ${CMAKE_SOURCE_DIR}/core/lib/cap/include ${CMAKE_SOURCE_DIR}/core/kernel/include)
 add_test(NAME host_test_vm_manager COMMAND test_vm_manager)
 set_tests_properties(host_test_vm_manager PROPERTIES LABELS "vm")
@@ -495,7 +513,7 @@ target_include_directories(test_elf_load_plan PRIVATE
     ${CMAKE_SOURCE_DIR}/interface/include
     ../../interface/include
 )
-target_link_libraries(test_elf_load_plan PRIVATE bharat_freestanding)
+# target_link_libraries(test_elf_load_plan PRIVATE bharat_freestanding)
 add_test(NAME host_test_elf_load_plan COMMAND test_elf_load_plan)
 
 add_executable(test_pm_handle_lifecycle
@@ -507,7 +525,7 @@ target_include_directories(test_pm_handle_lifecycle PRIVATE
     ../../interface/include
     ${CMAKE_SOURCE_DIR}/core/lib/handle
 )
-target_link_libraries(test_pm_handle_lifecycle PRIVATE bharat_freestanding)
+# target_link_libraries(test_pm_handle_lifecycle PRIVATE bharat_freestanding)
 add_test(NAME host_test_pm_handle_lifecycle COMMAND test_pm_handle_lifecycle)
 
 add_executable(test_vm_handle_lifecycle
@@ -519,7 +537,7 @@ target_include_directories(test_vm_handle_lifecycle PRIVATE
     ../../interface/include
     ${CMAKE_SOURCE_DIR}/core/lib/handle
 )
-target_link_libraries(test_vm_handle_lifecycle PRIVATE bharat_freestanding)
+# target_link_libraries(test_vm_handle_lifecycle PRIVATE bharat_freestanding)
 add_test(NAME host_test_vm_handle_lifecycle COMMAND test_vm_handle_lifecycle)
 set_tests_properties(host_test_vm_handle_lifecycle PROPERTIES LABELS "vm")
 
@@ -530,7 +548,7 @@ target_include_directories(test_pm_contract_v1 PRIVATE
     ${CMAKE_SOURCE_DIR}/interface/include
     ../../interface/include
 )
-target_link_libraries(test_pm_contract_v1 PRIVATE bharat_freestanding)
+# target_link_libraries(test_pm_contract_v1 PRIVATE bharat_freestanding)
 add_test(NAME host_test_pm_contract_v1 COMMAND test_pm_contract_v1)
 
 add_executable(test_pm_spawn_transaction
@@ -546,11 +564,12 @@ target_include_directories(test_pm_spawn_transaction PRIVATE
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ../../lib/handle
 )
-target_link_libraries(test_pm_spawn_transaction PRIVATE bharat_freestanding)
+# target_link_libraries(test_pm_spawn_transaction PRIVATE bharat_freestanding)
 add_test(NAME host_test_pm_spawn_transaction COMMAND test_pm_spawn_transaction)
 
 add_executable(test_pm_wait_reap
     process_vm/test_pm_wait_reap.c
+    process_vm/test_stubs.c
     ${CMAKE_SOURCE_DIR}/core/services/process_manager/process_manager.c
     ${CMAKE_SOURCE_DIR}/core/lib/handle/handle_table.c
     ${CMAKE_SOURCE_DIR}/core/lib/elf/elf_load_plan.c
@@ -562,7 +581,7 @@ target_include_directories(test_pm_wait_reap PRIVATE
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ../../lib/handle
 )
-target_link_libraries(test_pm_wait_reap PRIVATE bharat_freestanding)
+# target_link_libraries(test_pm_wait_reap PRIVATE bharat_freestanding)
 add_test(NAME host_test_pm_wait_reap COMMAND test_pm_wait_reap)
 
 add_executable(test_vm_authority_integration
@@ -576,12 +595,13 @@ target_include_directories(test_vm_authority_integration PRIVATE
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ../../lib/handle
 )
-target_link_libraries(test_vm_authority_integration PRIVATE bharat_freestanding)
+# target_link_libraries(test_vm_authority_integration PRIVATE bharat_freestanding)
 add_test(NAME host_test_vm_authority_integration COMMAND test_vm_authority_integration)
 set_tests_properties(host_test_vm_authority_integration PROPERTIES LABELS "vm")
 
 add_executable(test_procvm_e2e
     process_vm/test_procvm_e2e.c
+    process_vm/test_stubs.c
     ${CMAKE_SOURCE_DIR}/core/services/process_manager/process_manager.c
     ${CMAKE_SOURCE_DIR}/core/lib/handle/handle_table.c
     ${CMAKE_SOURCE_DIR}/core/lib/elf/elf_load_plan.c
@@ -593,7 +613,7 @@ target_include_directories(test_procvm_e2e PRIVATE
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ../../lib/handle
 )
-target_link_libraries(test_procvm_e2e PRIVATE bharat_freestanding)
+# target_link_libraries(test_procvm_e2e PRIVATE bharat_freestanding)
 add_test(NAME host_test_procvm_e2e COMMAND test_procvm_e2e)
 set_tests_properties(host_test_procvm_e2e PROPERTIES LABELS "vm")
 
@@ -610,13 +630,13 @@ target_include_directories(test_procvm_stress PRIVATE
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ../../lib/handle
 )
-target_link_libraries(test_procvm_stress PRIVATE bharat_freestanding)
+# target_link_libraries(test_procvm_stress PRIVATE bharat_freestanding)
 add_test(NAME host_test_procvm_stress COMMAND test_procvm_stress)
 set_tests_properties(host_test_procvm_stress PROPERTIES LABELS "vm")
 
 
-add_executable(test_init test_init.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_runtime.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_status.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_handoff.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_rollback.c)
-target_include_directories(test_init PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/lib/runtime/include ${CMAKE_SOURCE_DIR}/core/lib/cap/include ${CMAKE_SOURCE_DIR}/core/lib/ipc/include)
+add_executable(test_init test_init.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_runtime.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_manifest.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_graph.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_events.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_profile.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_status.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_rollback.c)
+target_include_directories(test_init PRIVATE ${CMAKE_SOURCE_DIR}/core/lib/namesvc/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/lib/runtime/include ${CMAKE_SOURCE_DIR}/core/lib/cap/include ${CMAKE_SOURCE_DIR}/core/lib/ipc/include)
 add_test(NAME host_test_init COMMAND test_init)
 
 add_executable(test_init_rollback test_init_rollback.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_rollback.c)
@@ -641,8 +661,8 @@ target_include_directories(test_ktime PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/in
 add_test(NAME host_test_ktime COMMAND test_ktime)
 
 
-add_executable(test_e2e_service_runtime test_e2e_service_runtime.c ${CMAKE_SOURCE_DIR}/core/services/process_manager/process_manager.c ${CMAKE_SOURCE_DIR}/core/services/vm_manager/vm_manager.c ${CMAKE_SOURCE_DIR}/core/services/servicemgr/servicemgr.c ${CMAKE_SOURCE_DIR}/core/lib/ipc/src/ipc.c)
-target_include_directories(test_e2e_service_runtime PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/ipc/include ${CMAKE_SOURCE_DIR}/core/lib/cap/include ${CMAKE_SOURCE_DIR}/core/kernel/include)
+add_executable(test_e2e_service_runtime test_e2e_service_runtime.c ${CMAKE_SOURCE_DIR}/core/services/process_manager/process_manager.c ${CMAKE_SOURCE_DIR}/core/services/vm_manager/vm_manager.c ${CMAKE_SOURCE_DIR}/core/services/servicemgr/servicemgr.c ${CMAKE_SOURCE_DIR}/core/lib/handle/handle_table.c ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_validate.c ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_authz.c ${CMAKE_SOURCE_DIR}/core/lib/ipc/src/ipc.c)
+target_include_directories(test_e2e_service_runtime PRIVATE ${CMAKE_SOURCE_DIR}/core/lib/runtime/include ${CMAKE_SOURCE_DIR}/core/lib/handle ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/ipc/include ${CMAKE_SOURCE_DIR}/core/lib/cap/include ${CMAKE_SOURCE_DIR}/core/kernel/include)
 add_test(NAME host_test_e2e_service_runtime COMMAND test_e2e_service_runtime)
 
 add_executable(test_runtime_startup

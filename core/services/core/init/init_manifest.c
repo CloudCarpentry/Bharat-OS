@@ -14,6 +14,10 @@ static int spawn_service(void *ctx) {
     init_service_runtime_t *sr = (init_service_runtime_t *)ctx;
     if (!sr || !sr->desc) return -1;
 
+    bharat_runtime_log("INIT: SPAWN_SERVICE_START ");
+    bharat_runtime_log(sr->desc->name ? sr->desc->name : "unnamed");
+    bharat_runtime_log("\n");
+
     if (sr->desc->id == INIT_SVC_NAMESVC || sr->desc->id == INIT_SVC_PROCESS_MANAGER) {
         const char *name = sr->desc->id == INIT_SVC_NAMESVC
             ? "services/namesvc" : "services/process_manager";
@@ -35,31 +39,34 @@ static int spawn_service(void *ctx) {
 
     uint64_t exec_handle = sr->desc->executable_desc.executable_handle;
     const char *module_name = sr->desc->executable_desc.module_name;
-    if (exec_handle == 0 || !module_name) {
+    if (exec_handle != 0 && module_name != NULL) {
+        // Step 1: Register executable with Process Manager
+        bh_pm_register_executable_request_v1_t reg_req = {
+            .abi_version = BH_PM_INTERFACE_VERSION_V1,
+            .struct_size = sizeof(bh_pm_register_executable_request_v1_t),
+            .executable_handle = exec_handle,
+        };
+        __builtin_strncpy(reg_req.module_name, module_name, sizeof(reg_req.module_name) - 1);
+
+        bharat_ipc_msg_header_t reg_req_hdr = {
+            .header_version = BHARAT_IPC_HEADER_VERSION_V1,
+            .service_id = PROCESS_MANAGER_SERVICE_ID,
+            .interface_version = BH_PM_INTERFACE_VERSION_V1,
+            .opcode = BH_PM_OP_REGISTER_EXECUTABLE_V1,
+            .payload_size = sizeof(bh_pm_register_executable_request_v1_t),
+            .reply_endpoint = 0,
+        };
+
+        int32_t reg_status = bharat_ipc_send(pm_ep, &reg_req_hdr, &reg_req);
+        if (reg_status != BHARAT_IPC_STATUS_OK) {
+            bharat_runtime_log("SPAWN_FAIL: REG_FAILED\n");
+            return -1;
+        }
+    } else if (sr->desc->name != NULL) {
+        exec_handle = (uint64_t)sr->desc->id;
+        module_name = sr->desc->name;
+    } else {
         bharat_runtime_log("SPAWN_FAIL: NO_EXEC_DESC\n");
-        return -1;
-    }
-
-    // Step 1: Register executable with Process Manager
-    bh_pm_register_executable_request_v1_t reg_req = {
-        .abi_version = BH_PM_INTERFACE_VERSION_V1,
-        .struct_size = sizeof(bh_pm_register_executable_request_v1_t),
-        .executable_handle = exec_handle,
-    };
-    __builtin_strncpy(reg_req.module_name, module_name, sizeof(reg_req.module_name) - 1);
-
-    bharat_ipc_msg_header_t reg_req_hdr = {
-        .header_version = BHARAT_IPC_HEADER_VERSION_V1,
-        .service_id = PROCESS_MANAGER_SERVICE_ID,
-        .interface_version = BH_PM_INTERFACE_VERSION_V1,
-        .opcode = BH_PM_OP_REGISTER_EXECUTABLE_V1,
-        .payload_size = sizeof(bh_pm_register_executable_request_v1_t),
-        .reply_endpoint = 0,
-    };
-
-    int32_t reg_status = bharat_ipc_send(pm_ep, &reg_req_hdr, &reg_req);
-    if (reg_status != BHARAT_IPC_STATUS_OK) {
-        bharat_runtime_log("SPAWN_FAIL: REG_FAILED\n");
         return -1;
     }
 
@@ -72,7 +79,7 @@ static int spawn_service(void *ctx) {
     }
     sr->launch.event_receive_cap = event_recv;
 
-    // Step 3: Send spawn request with valid executable_handle
+    // Step 3: Send spawn request with valid executable_handle via authenticated RPC
     bh_pm_spawn_request_v1_t req = {
         .abi_version = BH_PM_INTERFACE_VERSION_V1,
         .struct_size = sizeof(bh_pm_spawn_request_v1_t),
@@ -93,12 +100,18 @@ static int spawn_service(void *ctx) {
         .capability_transfer = event_send,
         .reply_endpoint = 0,
     };
+    bharat_ipc_msg_header_t rep_hdr = {0};
+    bh_pm_spawn_response_v1_t rep = {0};
 
-    int32_t call_status = bharat_ipc_send(pm_ep, &req_hdr, &req);
-    if (call_status != BHARAT_IPC_STATUS_OK) {
+    int32_t call_status = bharat_ipc_call_ex(pm_ep, &req_hdr, &req, &rep_hdr, &rep, sizeof(rep), 1000);
+    if (call_status != BHARAT_IPC_STATUS_OK || rep.status != 0) {
+        (void)ipc_endpoint_close(event_send);
+        (void)ipc_endpoint_close(event_recv);
+        sr->launch.event_receive_cap = 0;
         bharat_runtime_log("SPAWN_FAIL: SPAWN_CALL_FAILED\n");
         return -1;
     }
+    sr->launch.process_id = rep.kernel_process_id;
 
     bharat_sched_yield();
     return 0;

@@ -14,6 +14,7 @@ void mm_free_page(phys_addr_t page_addr) {
 uint32_t hal_cpu_get_id(void) { return 0; }
 void hal_cpu_disable_interrupts(void) {}
 void hal_cpu_enable_interrupts(void) {}
+void arch_cpu_relax(void) {}
 
 page_t *phys_to_page(phys_addr_t phys) {
     static page_t mock_pages[100];

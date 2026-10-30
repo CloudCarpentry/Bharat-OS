@@ -143,6 +143,8 @@ static kstatus_t ipc_status_to_kstatus(int ipc_status) {
         case IPC_ERR_CAP_INSTALL_FAILED: return K_ERR_INTERNAL_BUG;
         case IPC_ERR_CLOSED: return K_ERR_BAD_STATE;
         case IPC_ERR_TIMEOUT: return K_ERR_TIMEOUT;
+        case IPC_ERR_CANCELLED: return K_ERR_CANCELLED;
+        case IPC_ERR_REVOKED: return K_ERR_CAP_REVOKED;
         default: return K_ERR_INTERNAL_BUG;
     }
 }
@@ -191,6 +193,8 @@ bh_operation_result_t bh_sys_endpoint_send(bh_syscall_ctx_t *ctx) {
     prov.sender_cspace_id = table->cspace_id;
     prov.sender_owner_core = table->owner_core;
     prov.has_provenance = 1U;
+    prov.reply_cap_to_send = args.reply_cap_to_send;
+    prov.reply_cap_send_rights = args.reply_cap_send_rights;
 
     return bh_op_result_kstatus(
         ipc_status_to_kstatus(ipc_endpoint_send_ex(table, args.send_cap, payload,

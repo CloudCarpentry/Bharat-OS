@@ -7,6 +7,27 @@
 // Handle library
 #include <handle_table.h>
 
+int32_t __attribute__((weak)) bharat_service_dispatch_authorize(
+    uint32_t service_id,
+    uint32_t opcode,
+    const bharat_service_authz_desc_t *descs,
+    uint32_t desc_count,
+    bharat_cap_handle_t caller_cap,
+    uint64_t target_object_id) {
+    (void)service_id; (void)opcode; (void)descs; (void)desc_count;
+    (void)caller_cap; (void)target_object_id;
+    return BHARAT_IPC_STATUS_ERR_PERM;
+}
+
+int32_t __attribute__((weak)) bharat_ipc_recv(
+    bharat_ipc_endpoint_t endpoint,
+    bharat_ipc_msg_header_t *header,
+    void *payload_buf,
+    uint32_t max_size) {
+    (void)endpoint; (void)header; (void)payload_buf; (void)max_size;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+}
+
 // Custom basic mem/string implementations to ensure freestanding compilation
 static void *local_memset(void *s, int c, size_t n) {
     unsigned char *p = (unsigned char *)s;

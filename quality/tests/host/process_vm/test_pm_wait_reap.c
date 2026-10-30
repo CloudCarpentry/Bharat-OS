@@ -4,8 +4,48 @@
 #include "../../../../core/services/process_manager/process_manager.h"
 #include <bharat/uapi/ipc/status.h>
 
+static uint32_t g_mock_pid = 2000;
+static bharat_status_t mock_create_process(void *ctx, const bh_pm_kernel_create_req_t *req, bh_pm_kernel_process_t *out_proc) {
+    (void)ctx; (void)req;
+    out_proc->pid = ++g_mock_pid;
+    return BHARAT_STATUS_OK;
+}
+static bharat_status_t mock_create_vm_space(void *ctx, bh_pm_kernel_process_t *proc, uint32_t memory_profile, bh_vm_kernel_space_t *out_space) {
+    (void)ctx; (void)proc; (void)memory_profile;
+    out_space->space_id = g_mock_pid + 1000;
+    return BHARAT_STATUS_OK;
+}
+static bharat_status_t mock_realize_image(void *ctx, bh_pm_kernel_process_t *proc, bh_vm_kernel_space_t *space, const bh_user_image_plan_v1_t *plan, bh_pm_kernel_image_result_t *out_res) {
+    (void)ctx; (void)proc; (void)space;
+    out_res->main_thread_id = g_mock_pid + 2000;
+    out_res->entry_point = plan->entry_point;
+    return BHARAT_STATUS_OK;
+}
+static bharat_status_t mock_start_process(void *ctx, bh_pm_kernel_process_t *proc) {
+    (void)ctx; (void)proc;
+    return BHARAT_STATUS_OK;
+}
+static bharat_status_t mock_request_terminate(void *ctx, bh_pm_kernel_process_t *proc) {
+    (void)ctx; (void)proc;
+    return BHARAT_STATUS_OK;
+}
+static bharat_status_t mock_reap_process(void *ctx, bh_pm_kernel_process_t *proc) {
+    (void)ctx; (void)proc;
+    return BHARAT_STATUS_OK;
+}
+
 void test_pm_wait_reap_lifecycle(void) {
     process_manager_init();
+    bh_pm_kernel_ops_t pm_ops = {
+        .ctx = NULL,
+        .create_process = mock_create_process,
+        .create_vm_space = mock_create_vm_space,
+        .realize_image = mock_realize_image,
+        .start_process = mock_start_process,
+        .request_terminate = mock_request_terminate,
+        .reap_process = mock_reap_process
+    };
+    assert(bh_pm_set_kernel_ops(&pm_ops) == BHARAT_IPC_STATUS_OK);
 
     // Register dummy executable
     uint8_t dummy_elf[1024];

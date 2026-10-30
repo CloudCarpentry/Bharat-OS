@@ -79,7 +79,9 @@ int bh_elf_generate_load_plan_for_machine(const uint8_t *bytes, size_t size, uin
         return BH_ELF_PLAN_ERR_MAGIC;
     }
 
-    if ((ehdr->e_ident[EI_CLASS] != ELFCLASS32 && ehdr->e_ident[EI_CLASS] != ELFCLASS64) || ehdr->e_ident[EI_DATA] != ELFDATA2LSB) {
+    uint8_t expected_class = (expected_machine == BH_ELF_MACHINE_ARM32 || expected_machine == BH_ELF_MACHINE_RISCV32)
+        ? ELFCLASS32 : ELFCLASS64;
+    if (ehdr->e_ident[EI_CLASS] != expected_class || ehdr->e_ident[EI_DATA] != ELFDATA2LSB) {
         return BH_ELF_PLAN_ERR_CLASS;
     }
 

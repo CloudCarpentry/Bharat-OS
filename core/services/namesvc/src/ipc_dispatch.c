@@ -15,7 +15,8 @@ void namesvc_ipc_handle_request(const bharat_ipc_contract_header_t *hdr,
 
     switch (hdr->opcode) {
         case BHARAT_NAMESVC_OP_LOOKUP: {
-            if (hdr->payload_size != sizeof(struct namesvc_req_lookup)) {
+            if (hdr->payload_size != sizeof(struct namesvc_req_lookup) &&
+                hdr->payload_size != sizeof(namesvc_ipc_req_t)) {
                 res->status = BHARAT_IPC_STATUS_ERR_INVALID;
                 return;
             }
@@ -34,7 +35,8 @@ void namesvc_ipc_handle_request(const bharat_ipc_contract_header_t *hdr,
             break;
         }
         case BHARAT_NAMESVC_OP_REGISTER: {
-            if (hdr->payload_size != sizeof(struct namesvc_req_register)) {
+            if (hdr->payload_size != sizeof(struct namesvc_req_register) &&
+                hdr->payload_size != sizeof(namesvc_ipc_req_t)) {
                 res->status = BHARAT_IPC_STATUS_ERR_INVALID;
                 return;
             }
@@ -53,7 +55,8 @@ void namesvc_ipc_handle_request(const bharat_ipc_contract_header_t *hdr,
             break;
         }
         case BHARAT_NAMESVC_OP_UNREGISTER: {
-            if (hdr->payload_size != sizeof(struct namesvc_req_unregister)) {
+            if (hdr->payload_size != sizeof(struct namesvc_req_unregister) &&
+                hdr->payload_size != sizeof(namesvc_ipc_req_t)) {
                 res->status = BHARAT_IPC_STATUS_ERR_INVALID;
                 return;
             }

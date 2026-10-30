@@ -24,15 +24,31 @@ typedef bharat_cap_handle_t bharat_ipc_endpoint_t;
 /* IPC Message Header Struct - compatibility alias */
 typedef bharat_ipc_contract_header_t bharat_ipc_msg_header_t;
 
-/* IPC Send Request Stub */
+/* IPC Send Request (data-only; rejects wire authority/reply integers) */
 int32_t bharat_ipc_send(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_header_t *header, const void *payload);
+
+/* IPC Send Request with explicit kernel-mediated capability transfer */
+int32_t bharat_ipc_send_cap(bharat_ipc_endpoint_t endpoint,
+                            const bharat_ipc_msg_header_t *header,
+                            const void *payload,
+                            bharat_cap_handle_t cap_to_send,
+                            uint64_t cap_send_rights);
+int32_t bharat_ipc_send_cap_ex(bharat_ipc_endpoint_t endpoint,
+                               const bharat_ipc_msg_header_t *header,
+                               const void *payload,
+                               bharat_cap_handle_t cap_to_send,
+                               uint64_t cap_send_rights,
+                               uint64_t timeout_ticks);
+
+/* Close / release an IPC endpoint capability deterministically */
+int32_t bharat_ipc_endpoint_close(bharat_ipc_endpoint_t endpoint);
 
 /* V1 data receive: wire authority/reply integers are cleared. Capability
  * transfers are discarded by the kernel and rejected as unsupported. */
 int32_t bharat_ipc_recv(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t *header, void *payload_buf, uint32_t max_size);
 
-/* V1 RPC is unsupported until authenticated reply provenance and capability/
- * endpoint release exist. It allocates no resources and leaves outputs intact. */
+/* Authenticated synchronous RPC using an ephemeral reply endpoint and
+ * separate authority/reply capability slots. */
 int32_t bharat_ipc_call(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_header_t *req_header, const void *req_payload,
                         bharat_ipc_msg_header_t *rep_header, void *rep_payload_buf, uint32_t rep_max_size);
 

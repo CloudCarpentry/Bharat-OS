@@ -4,10 +4,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "sched/sched.h"
 #include "spinlock.h"
 #include "kernel/status.h"
 #include <bharat/kernel/ds/bh_id_allocator.h>
+
+struct bh_thread;
+typedef struct bh_thread bh_thread_t;
+struct bh_process;
+typedef struct bh_process bh_process_t;
+typedef uintptr_t phys_addr_t;
 
 #define BH_CAP_SLOT_MASK        0xFFFFU
 #define BH_CAP_GEN_SHIFT        16U
@@ -243,7 +248,9 @@ typedef struct __attribute__((aligned(16))) capability_entry_new {
     // Memory/Frame Ownership
     uint32_t owner_core;
 
-    uint8_t pad_mid[8]; // Align instance_id to 16-byte boundary (offset 96)
+    /* Replaces pad_mid[8] while preserving exact 96-byte offset for instance_id */
+    uint32_t active_pins;
+    uint32_t scope_id;
 
     // Distributed consistency fields
     cap_instance_id_t instance_id;
@@ -255,6 +262,7 @@ typedef enum {
     CAP_STATE_LIVE = 1,
     CAP_STATE_REVOKING = 2,
     CAP_STATE_REVOKED = 3,
+    CAP_STATE_QUARANTINED = 4,
 } cap_state_t;
 
 // Replace old struct with new
@@ -373,6 +381,22 @@ typedef struct cap_validation_request {
 kstatus_t cap_validate_ex(capability_table_t *table,
                           const cap_validation_request_t *req,
                           capability_entry_t *out_entry);
+
+/**
+ * @brief Atomically validates a capability and increments its active_pins counter.
+ *
+ * Prevents concurrent revocation from freeing the underlying object until
+ * cap_unpin() is called.
+ */
+kstatus_t cap_validate_and_pin(capability_table_t *table,
+                               const cap_validation_request_t *req,
+                               capability_entry_t *out_entry,
+                               uint32_t *out_pinned_slot);
+
+/**
+ * @brief Decrements active_pins for a previously pinned capability slot.
+ */
+void cap_unpin(capability_table_t *table, uint32_t pinned_slot);
 
 /*@
   requires src != \null;

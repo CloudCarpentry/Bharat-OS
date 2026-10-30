@@ -58,6 +58,27 @@ int cap_invoke(uintptr_t cap_id, uintptr_t opcode, uintptr_t arg0, uintptr_t arg
     };
     kstatus_t dispatch_status = cap_validate_ex(parent_table, &dispatch_req, &dispatch_cap);
     if (dispatch_status != K_OK) return dispatch_status;
+    if (dispatch_cap.type == CAP_TYPE_ENDPOINT) {
+        if (opcode == BH_ENDPOINT_OP_CLOSE) {
+            if ((dispatch_cap.rights & CAP_RIGHT_ENDPOINT_RECEIVE) != 0U) {
+                (void)ipc_endpoint_owner_close(parent_table, (uint32_t)cap_id);
+            }
+            if (cap_table_revoke(parent_table, (uint32_t)cap_id) != 0) {
+                return K_ERR_BAD_STATE;
+            }
+            return K_OK;
+        }
+        if (opcode == BH_ENDPOINT_OP_CANCEL_WAITER) {
+            extern bh_thread_t *sched_find_thread_by_id(uint64_t tid);
+            bh_thread_t *target = (arg0 != 0U)
+                ? sched_find_thread_by_id((uint64_t)arg0)
+                : sched_current_thread();
+            if (!target) return K_ERR_BAD_THREAD;
+            return ipc_endpoint_cancel_waiter(dispatch_cap.object_ref, target, IPC_ERR_CANCELLED) == IPC_OK
+                ? K_OK : K_ERR_NOT_FOUND;
+        }
+        return K_ERR_UNSUPPORTED;
+    }
     if (dispatch_cap.type == CAP_TYPE_VM_SPACE ||
         (dispatch_cap.type == CAP_TYPE_PROCESS && opcode == BH_VM_OP_CREATE))
         return vm_space_cap_invoke(cap_id, opcode, arg0, arg1);
@@ -100,9 +121,10 @@ int cap_invoke(uintptr_t cap_id, uintptr_t opcode, uintptr_t arg0, uintptr_t arg
         }
         if (opcode == BH_PROCESS_OP_TERMINATE) {
             if (!child->main_thread) return K_OK;
-            /* The existing endpoint backend has no cancellation operation.
-             * Retain blocked objects rather than free a linked wait-queue node. */
-            if (child->main_thread->state == THREAD_STATE_BLOCKED) return K_ERR_UNSUPPORTED;
+            /* Safely unlink any blocked endpoint wait-queue references before termination. */
+            if (child->main_thread->state == THREAD_STATE_BLOCKED) {
+                ipc_endpoint_cancel_all_for_thread(child->main_thread, IPC_ERR_CANCELLED);
+            }
             status = sched_terminate_tid(child->main_thread->thread_id);
             if (status == K_OK) child->main_thread = NULL;
             return status;

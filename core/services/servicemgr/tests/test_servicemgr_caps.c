@@ -5,7 +5,12 @@
 #include <bharat/uapi/ipc/status.h>
 
 int32_t bharat_ipc_send(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_header_t *header, const void *payload) { (void)endpoint; (void)header; (void)payload; return 0; }
+int32_t bharat_ipc_send_ex(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_header_t *header, const void *payload, uint64_t timeout_ms) { (void)endpoint; (void)header; (void)payload; (void)timeout_ms; return 0; }
 int32_t bharat_ipc_recv(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t *header, void *payload_buf, uint32_t max_size) { (void)endpoint; (void)header; (void)payload_buf; (void)max_size; return -1; }
+int32_t bharat_ipc_recv_envelope_ex(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t *header, void *payload_buf, uint32_t max_size, uint64_t timeout_ms, bh_ipc_receive_envelope_v1_t *out_envelope) { (void)endpoint; (void)header; (void)payload_buf; (void)max_size; (void)timeout_ms; (void)out_envelope; return -1; }
+int32_t bharat_ipc_endpoint_close(bharat_ipc_endpoint_t endpoint) { (void)endpoint; return 0; }
+void bharat_runtime_log(const char *msg) { (void)msg; }
+int bharat_sched_yield(void) { return 0; }
 
 static bharat_cap_status_t fake_backend(
     bharat_cap_handle_t handle,

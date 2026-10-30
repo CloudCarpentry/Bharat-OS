@@ -24,3 +24,15 @@ int32_t bharat_ipc_send(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_hea
     (void)endpoint; (void)header; (void)payload;
     return 0;
 }
+
+int32_t bharat_ipc_recv_envelope(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t *header, void *payload, uint32_t max_payload_size, bh_ipc_receive_envelope_v1_t *envelope) {
+    (void)endpoint; (void)header; (void)payload; (void)max_payload_size; (void)envelope;
+    return -1;
+}
+
+int32_t bharat_ipc_endpoint_close(bharat_ipc_endpoint_t endpoint) {
+    (void)endpoint;
+    return 0;
+}
+
+void bharat_sched_yield(void) {}

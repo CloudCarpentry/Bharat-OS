@@ -23,6 +23,9 @@ kstatus_t process_destroy(bh_process_t *process) {
     return K_ERR_NOT_FOUND;
   }
 
+  /* Drain local terminated thread reap queue before checking for live threads. */
+  sched_reap_terminated_threads();
+
   for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
     thread_slot_t *ts = &((thread_slot_t*)rq->threads)[i];
     if (ts->in_use != 0U && ts->thread.process_id == slot->process.process_id) {

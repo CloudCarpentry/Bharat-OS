@@ -57,6 +57,8 @@ typedef enum {
     BH_CAP_TX_OP_DELEGATE = 1,
     BH_CAP_TX_OP_REVOKE = 2,
     BH_CAP_TX_OP_ROLLBACK = 3,
+    BH_CAP_TX_OP_REVOKE_PREPARE = 4,
+    BH_CAP_TX_OP_REVOKE_COMMIT = 5,
 } bh_cap_tx_op_t;
 
 typedef struct {
@@ -87,41 +89,83 @@ typedef struct {
 extern bh_cap_tx_entry_t g_cap_tx_table[MAX_CPUS][BH_CAP_TX_PER_CORE];
 extern spinlock_t g_cap_tx_lock[MAX_CPUS];
 
+/*
+ * Pack request/ack payloads strictly within the 56-bit uRPC payload mask
+ * (bits 0..55; bits 56..63 are reserved by urpc_pack_msg for msg_type).
+ *
+ * Request layout (54 bits):
+ *   bits 46..53 : origin_core (8 bits)
+ *   bits 40..45 : slot        (6 bits)
+ *   bits 8..39  : generation  (32 bits)
+ *   bits 0..7   : op          (8 bits)
+ *
+ * Ack layout (54 bits):
+ *   bits 49..53 : origin_core    (5 bits, MAX_CPUS <= 32)
+ *   bits 45..48 : slot           (4 bits, BH_CAP_TX_PER_CORE == 16)
+ *   bits 13..44 : generation     (32 bits)
+ *   bits 8..12  : responder_core (5 bits, MAX_CPUS <= 32)
+ *   bits 0..7   : status         (8 bits, signed)
+ */
 static inline uint64_t cap_tx_pack_req(uint8_t origin_core, uint8_t slot, uint32_t generation, uint8_t op) {
-    return ((uint64_t)origin_core << 48) |
-           ((uint64_t)slot << 40) |
+    return (((uint64_t)origin_core & 0xFFULL) << 46) |
+           (((uint64_t)slot & 0x3FULL) << 40) |
            (((uint64_t)generation & 0xFFFFFFFFULL) << 8) |
            ((uint64_t)op & 0xFFULL);
 }
 
 static inline void cap_tx_unpack_req(uint64_t payload, uint8_t *origin_core, uint8_t *slot, uint32_t *generation, uint8_t *op) {
-    if (origin_core) *origin_core = (uint8_t)((payload >> 48) & 0xFF);
-    if (slot) *slot = (uint8_t)((payload >> 40) & 0xFF);
-    if (generation) *generation = (uint32_t)((payload >> 8) & 0xFFFFFFFFULL);
-    if (op) *op = (uint8_t)(payload & 0xFF);
+    if (origin_core) *origin_core = (uint8_t)((payload >> 46) & 0xFFULL);
+    if (slot)        *slot        = (uint8_t)((payload >> 40) & 0x3FULL);
+    if (generation)  *generation  = (uint32_t)((payload >> 8) & 0xFFFFFFFFULL);
+    if (op)          *op          = (uint8_t)(payload & 0xFFULL);
 }
 
 static inline uint64_t cap_tx_pack_ack(uint8_t origin_core, uint8_t slot, uint32_t generation, uint8_t responder_core, int8_t status) {
-    // Pack 32-bit generation to prevent truncation and wraparound matching bugs
-    return ((uint64_t)origin_core << 56) |
-           ((uint64_t)slot << 48) |
-           (((uint64_t)generation & 0xFFFFFFFFULL) << 16) |
-           ((uint64_t)responder_core << 8) |
+    return (((uint64_t)origin_core & 0x1FULL) << 49) |
+           (((uint64_t)slot & 0x0FULL) << 45) |
+           (((uint64_t)generation & 0xFFFFFFFFULL) << 13) |
+           (((uint64_t)responder_core & 0x1FULL) << 8) |
            ((uint64_t)(uint8_t)status);
 }
 
 static inline void cap_tx_unpack_ack(uint64_t payload, uint8_t *origin_core, uint8_t *slot, uint32_t *generation, uint8_t *responder_core, int8_t *status) {
-    if (origin_core) *origin_core = (uint8_t)((payload >> 56) & 0xFF);
-    if (slot) *slot = (uint8_t)((payload >> 48) & 0xFF);
-    if (generation) *generation = (uint32_t)((payload >> 16) & 0xFFFFFFFFULL);
-    if (responder_core) *responder_core = (uint8_t)((payload >> 8) & 0xFF);
-    if (status) *status = (int8_t)(payload & 0xFF);
+    if (origin_core)    *origin_core    = (uint8_t)((payload >> 49) & 0x1FULL);
+    if (slot)           *slot           = (uint8_t)((payload >> 45) & 0x0FULL);
+    if (generation)     *generation     = (uint32_t)((payload >> 13) & 0xFFFFFFFFULL);
+    if (responder_core) *responder_core = (uint8_t)((payload >> 8) & 0x1FULL);
+    if (status)         *status         = (int8_t)(payload & 0xFFULL);
 }
 
 bh_cap_tx_entry_t *cap_tx_alloc(uint32_t origin_core, uint32_t op, uint8_t *out_slot);
 void cap_tx_release(uint32_t origin_core, uint8_t slot);
 void cap_handle_tx_req(uint64_t payload, uint32_t source_core);
 void cap_handle_tx_ack(uint64_t payload);
+
+/* Weak hooks for endpoint capability reference tracking when linked with IPC */
+int ipc_endpoint_acquire_send_cap(uint64_t endpoint_obj_ref);
+int ipc_endpoint_acquire_recv_cap(uint64_t endpoint_obj_ref);
+int ipc_endpoint_release_send_cap(uint64_t endpoint_obj_ref);
+int ipc_endpoint_release_recv_cap(uint64_t endpoint_obj_ref);
+
+static inline void cap_endpoint_ref_acquire(cap_type_t type, uint64_t object_ref, cap_rights_mask_t rights) {
+    if (type != CAP_TYPE_ENDPOINT) return;
+    if ((rights & CAP_RIGHT_ENDPOINT_SEND) != 0U) {
+        (void)ipc_endpoint_acquire_send_cap(object_ref);
+    }
+    if ((rights & CAP_RIGHT_ENDPOINT_RECEIVE) != 0U) {
+        (void)ipc_endpoint_acquire_recv_cap(object_ref);
+    }
+}
+
+static inline void cap_endpoint_ref_release(cap_type_t type, uint64_t object_ref, cap_rights_mask_t rights) {
+    if (type != CAP_TYPE_ENDPOINT) return;
+    if ((rights & CAP_RIGHT_ENDPOINT_SEND) != 0U) {
+        (void)ipc_endpoint_release_send_cap(object_ref);
+    }
+    if ((rights & CAP_RIGHT_ENDPOINT_RECEIVE) != 0U) {
+        (void)ipc_endpoint_release_recv_cap(object_ref);
+    }
+}
 
 static inline bh_cap_locator_t cap_locator_null(void) {
     return (bh_cap_locator_t){

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "mm.h"
 #include "../../include/capability.h"
 #include "bharat/kernel/ds/bh_refcount.h"
 

@@ -55,6 +55,8 @@ void cap_handle_tx_req(uint64_t payload, uint32_t source_core) {
             dst_entry->rights = tx->requested_rights;
             dst_entry->object_ref = tx->object_ref;
             dst_entry->flags = tx->flags;
+            dst_entry->active_pins = 0U;
+            dst_entry->scope_id = 0U;
             dst_entry->owner_core = tx->owner_core;
 
             dst_entry->instance_id = tx->instance_id;
@@ -80,6 +82,10 @@ void cap_handle_tx_req(uint64_t payload, uint32_t source_core) {
 
         spin_unlock(&dst->lock);
 
+        if (ret == 0) {
+            cap_endpoint_ref_acquire((cap_type_t)tx->type, tx->object_ref, tx->requested_rights);
+        }
+
         __asm__ volatile("" : : : "memory");
         uint64_t ack_payload = cap_tx_pack_ack(origin_core, slot, generation, (uint8_t)current_core, (int8_t)ret);
         urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_DELEGATE_ACK, ack_payload));
@@ -88,12 +94,22 @@ void cap_handle_tx_req(uint64_t payload, uint32_t source_core) {
         if (tx->remote_dst_slot != UINT32_MAX) {
             capability_table_t* dst = cap_locator_resolve_table(&tx->dst);
             if (dst && tx->remote_dst_slot < BHARAT_ARRAY_SIZE(dst->entries)) {
+                cap_type_t r_type = CAP_TYPE_NONE;
+                uint64_t r_obj = 0U;
+                uint64_t r_rights = 0U;
+                bool released = false;
                 spin_lock(&dst->lock);
                 capability_entry_t *e = &dst->entries[tx->remote_dst_slot];
                 if (e->in_use != 0U && e->generation == tx->remote_dst_gen) {
+                    r_type = e->type;
+                    r_obj = e->object_ref;
+                    r_rights = e->rights;
+                    released = true;
                     e->rights = 0U;
                     e->flags = 0U;
                     e->object_ref = 0U;
+                    e->active_pins = 0U;
+                    e->scope_id = 0U;
                     e->parent = cap_locator_null();
                     e->first_child = cap_locator_null();
                     e->next_sibling = cap_locator_null();
@@ -103,11 +119,14 @@ void cap_handle_tx_req(uint64_t payload, uint32_t source_core) {
                     bh_id_allocator_free(&dst->id_allocator, tx->remote_dst_slot);
                 }
                 spin_unlock(&dst->lock);
+                if (released) {
+                    cap_endpoint_ref_release(r_type, r_obj, r_rights);
+                }
             }
         }
         uint64_t ack_payload = cap_tx_pack_ack(origin_core, slot, generation, (uint8_t)current_core, 0);
         urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_REVOKE_ACK, ack_payload));
-    } else if (op == BH_CAP_TX_OP_REVOKE) {
+    } else if (op == BH_CAP_TX_OP_REVOKE_PREPARE) {
         uint32_t revocation_epoch = (uint32_t)tx->revocation_epoch;
         uint32_t src_slot = tx->target.slot;
         uint32_t src_generation = tx->target.generation;
@@ -127,9 +146,45 @@ void cap_handle_tx_req(uint64_t payload, uint32_t source_core) {
                         revocation_epoch >= entry->parent.revocation_epoch;
 
                     if (is_descendant) {
+                        /* Phase 1: mark REVOKING while preserving parent/first_child/next_sibling
+                         * links until Phase 2 post-order cleanup finishes. */
+                        entry->state = CAP_STATE_REVOKING;
+                    }
+                }
+            }
+            spin_unlock(&table->lock);
+        }
+
+        uint64_t ack_payload = cap_tx_pack_ack(origin_core, slot, generation, (uint8_t)current_core, 0);
+        urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_REVOKE_ACK, ack_payload));
+    } else if (op == BH_CAP_TX_OP_REVOKE || op == BH_CAP_TX_OP_REVOKE_COMMIT) {
+        uint32_t revocation_epoch = (uint32_t)tx->revocation_epoch;
+        uint32_t src_slot = tx->target.slot;
+        uint32_t src_generation = tx->target.generation;
+
+        for (size_t cspace = 0; cspace < BH_CAP_CSPACES_PER_CORE; ++cspace) {
+            capability_table_t *table = g_cap_cspace_registry[current_core][cspace].table;
+            if (table == NULL) continue;
+
+            spin_lock(&table->lock);
+            for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
+                capability_entry_t *entry = &table->entries[i];
+                if (entry->in_use != 0U && (entry->state == CAP_STATE_LIVE || entry->state == CAP_STATE_REVOKING)) {
+                    bool is_descendant =
+                        entry->parent.owner_core == origin_core &&
+                        entry->parent.slot == src_slot &&
+                        entry->parent.generation == src_generation &&
+                        revocation_epoch >= entry->parent.revocation_epoch;
+
+                    if (is_descendant) {
+                        cap_type_t r_type = entry->type;
+                        uint64_t r_obj = entry->object_ref;
+                        uint64_t r_rights = entry->rights;
                         entry->rights = 0U;
                         entry->flags = 0U;
                         entry->object_ref = 0U;
+                        entry->active_pins = 0U;
+                        entry->scope_id = 0U;
                         entry->parent = cap_locator_null();
                         entry->first_child = cap_locator_null();
                         entry->next_sibling = cap_locator_null();
@@ -137,6 +192,7 @@ void cap_handle_tx_req(uint64_t payload, uint32_t source_core) {
                         entry->state = CAP_STATE_FREE;
                         entry->in_use = 0U;
                         bh_id_allocator_free(&table->id_allocator, (uint32_t)i);
+                        cap_endpoint_ref_release(r_type, r_obj, r_rights);
                     }
                 }
             }
@@ -298,6 +354,68 @@ kstatus_t cap_validate_ex(capability_table_t *table,
     return status;
 }
 
+kstatus_t cap_validate_and_pin(capability_table_t *table,
+                               const cap_validation_request_t *req,
+                               capability_entry_t *out_entry,
+                               uint32_t *out_pinned_slot) {
+    if (!table || !req || !out_pinned_slot) {
+        return K_ERR_INVALID_ARG;
+    }
+
+    uint32_t id_only = bh_cap_index(req->cap_id);
+    uint32_t handle_gen = bh_cap_generation(req->cap_id);
+    kstatus_t status = K_ERR_NOT_FOUND;
+
+    *out_pinned_slot = UINT32_MAX;
+
+    spin_lock(&table->lock);
+
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
+        capability_entry_t *e = &table->entries[i];
+        if (e->in_use != 0U && e->id == id_only) {
+            if (!bh_cap_generation_matches(e->generation, handle_gen)) {
+                status = K_ERR_CAP_STALE;
+                break;
+            }
+            status = cap_validate_generation_internal(e->generation, req->expected_generation);
+            if (status != K_OK) break;
+            if (e->state != CAP_STATE_LIVE) {
+                status = K_ERR_CAP_REVOKED;
+                break;
+            }
+            status = cap_validate_object_type_internal(e->type, req->expected_object_type);
+            if (status != K_OK) break;
+            status = cap_validate_rights_internal(e->rights, req->required_rights);
+            if (status != K_OK) break;
+            status = cap_validate_scope_internal(table, req->requester_pid);
+            if (status != K_OK) break;
+
+            e->active_pins++;
+            *out_pinned_slot = (uint32_t)i;
+            if (out_entry) {
+                *out_entry = *e;
+            }
+            status = K_OK;
+            break;
+        }
+    }
+
+    spin_unlock(&table->lock);
+    return status;
+}
+
+void cap_unpin(capability_table_t *table, uint32_t pinned_slot) {
+    if (!table || pinned_slot >= BHARAT_ARRAY_SIZE(table->entries)) {
+        return;
+    }
+    spin_lock(&table->lock);
+    capability_entry_t *e = &table->entries[pinned_slot];
+    if (e->in_use != 0U && e->active_pins > 0U) {
+        e->active_pins--;
+    }
+    spin_unlock(&table->lock);
+}
+
 kstatus_t cap_lookup_thread(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_thread_object_t *out) {
     if (!table || !out) return K_ERR_INVALID_ARG;
     if (!bh_cap_is_valid_encoding(cap_id)) return K_ERR_CAP_INVALID;
@@ -439,8 +557,6 @@ bharat_cap_status_t kernel_cap_authority_resolver(
     const bharat_cap_scope_t *required_scope,
     bharat_cap_validation_result_t *out_result)
 {
-    (void)required_scope;
-    (void)expected_object_id;
     uint32_t cpu = hal_cpu_get_id();
     capability_table_t* table = NULL;
     if (g_cpu_locals[cpu].current && g_cpu_locals[cpu].current->process) {
@@ -466,6 +582,28 @@ bharat_cap_status_t kernel_cap_authority_resolver(
     kstatus_t status = cap_validate_ex(table, &req, &entry);
 
     if (status == K_OK) {
+        // Enforce object identity matching if caller specified a concrete object ID
+        if (expected_object_id != 0U && entry.object_ref != expected_object_id) {
+            if (out_result) {
+                out_result->allowed = false;
+                out_result->status = BHARAT_CAP_OBJECT_MISMATCH;
+            }
+            return BHARAT_CAP_OBJECT_MISMATCH;
+        }
+
+        // Enforce scope constraints if caller specified a scope requirement
+        if (required_scope != NULL && required_scope->kind != BHARAT_CAP_SCOPE_GLOBAL) {
+            if (required_scope->scope_id != 0U &&
+                entry.scope_id != (uint32_t)required_scope->scope_id &&
+                entry.object_ref != required_scope->scope_id) {
+                if (out_result) {
+                    out_result->allowed = false;
+                    out_result->status = BHARAT_CAP_SCOPE_DENIED;
+                }
+                return BHARAT_CAP_SCOPE_DENIED;
+            }
+        }
+
         if (out_result) {
             out_result->allowed = true;
             out_result->status = BHARAT_CAP_OK;
@@ -476,15 +614,22 @@ bharat_cap_status_t kernel_cap_authority_resolver(
             out_result->descriptor.rights = required_rights;
             out_result->descriptor.generation = entry.generation;
             out_result->descriptor.state = entry.state;
+            if (required_scope != NULL) {
+                out_result->descriptor.scope = *required_scope;
+            } else {
+                out_result->descriptor.scope.kind = BHARAT_CAP_SCOPE_GLOBAL;
+                out_result->descriptor.scope.scope_id = entry.scope_id;
+            }
         }
         return BHARAT_CAP_OK;
     } else {
         bharat_cap_status_t out_status = BHARAT_CAP_NOT_FOUND;
         switch (status) {
-            case K_ERR_CAP_STALE:   out_status = BHARAT_CAP_STALE; break;
-            case K_ERR_CAP_REVOKED: out_status = BHARAT_CAP_REVOKED; break;
-            case K_ERR_CAP_DENIED:  out_status = BHARAT_CAP_RIGHTS_DENIED; break;
-            default:                out_status = BHARAT_CAP_NOT_FOUND; break;
+            case K_ERR_CAP_STALE:      out_status = BHARAT_CAP_STALE; break;
+            case K_ERR_CAP_REVOKED:    out_status = BHARAT_CAP_REVOKED; break;
+            case K_ERR_CAP_DENIED:     out_status = BHARAT_CAP_RIGHTS_DENIED; break;
+            case K_ERR_CAP_WRONG_TYPE: out_status = BHARAT_CAP_OBJECT_MISMATCH; break;
+            default:                   out_status = BHARAT_CAP_NOT_FOUND; break;
         }
         if (out_result) {
             out_result->allowed = false;

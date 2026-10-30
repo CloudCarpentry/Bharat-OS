@@ -1,6 +1,7 @@
 #include "../../include/mm/accel_mem.h"
 #include "../../include/kernel/status.h"
 #include "../../include/mm/pmm.h"
+#include "mm.h"
 #include <stddef.h>
 
 int accel_sg_build(accel_buffer_t *buf) {

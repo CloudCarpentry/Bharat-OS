@@ -1,6 +1,26 @@
 #include "cap_internal.h"
 #include "time/ktime.h"
 
+int __attribute__((weak)) ipc_endpoint_acquire_send_cap(uint64_t endpoint_obj_ref) {
+    (void)endpoint_obj_ref;
+    return 0;
+}
+
+int __attribute__((weak)) ipc_endpoint_acquire_recv_cap(uint64_t endpoint_obj_ref) {
+    (void)endpoint_obj_ref;
+    return 0;
+}
+
+int __attribute__((weak)) ipc_endpoint_release_send_cap(uint64_t endpoint_obj_ref) {
+    (void)endpoint_obj_ref;
+    return 0;
+}
+
+int __attribute__((weak)) ipc_endpoint_release_recv_cap(uint64_t endpoint_obj_ref) {
+    (void)endpoint_obj_ref;
+    return 0;
+}
+
 bh_cap_cspace_registry_entry_t
     g_cap_cspace_registry[MAX_CPUS][BH_CAP_CSPACES_PER_CORE];
 capability_table_t g_cap_bootstrap_cspaces[MAX_CPUS];
@@ -77,22 +97,11 @@ void cap_tx_release(uint32_t origin_core, uint8_t slot) {
     atomic_set(&tx->state, BH_CAP_TX_FREE);
 }
 
-/*@
-  requires table != \null;
-  requires \valid(table);
-  assigns \nothing;
-  ensures \result == \null || \valid(\result);
-*/
 capability_entry_t* cap_find_entry(capability_table_t* table, uint32_t cap_id) {
     if (!BHARAT_PTR_NON_NULL(table) || cap_id == 0U) {
         return NULL;
     }
 
-    /*@
-      loop invariant 0 <= i <= BHARAT_ARRAY_SIZE(table->entries);
-      loop assigns i;
-      loop variant BHARAT_ARRAY_SIZE(table->entries) - i;
-    */
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
         capability_entry_t* e = &table->entries[i];
         if (e->in_use != 0U && e->id == cap_id) {
@@ -108,8 +117,6 @@ capability_table_t* cap_table_create(void) {
         return NULL;
     }
 
-    /* Reserve before allocation, which may be preempted or re-enter CSpace
-     * creation. No allocator operation occurs while holding the registry lock. */
     uint32_t slot = BH_CAP_CSPACES_PER_CORE;
     uint32_t generation = 0U;
     hal_irq_state_t irq_state;
@@ -117,7 +124,6 @@ capability_table_t* cap_table_create(void) {
     for (uint32_t i = 0U; i < BH_CAP_CSPACES_PER_CORE; ++i) {
         bh_cap_cspace_registry_entry_t *entry =
             &g_cap_cspace_registry[owner_core][i];
-        /* Retire slots rather than wrap identity while old locators survive. */
         if (entry->table == NULL && !entry->reserved &&
             entry->generation < BH_CAP_CSPACE_GENERATION_MAX) {
             entry->reserved = true;
@@ -206,8 +212,6 @@ void cap_table_destroy(capability_table_t* table) {
         spin_unlock_irqrestore(&g_cap_registry_lifetime_lock[owner_core], irq_state);
         return;
     }
-    /* No pending IPC locator can resolve after this unpublish. Local transfer
-     * installation holds this lock until it has finished using source storage. */
     registered->table = NULL;
     bool bootstrap_storage = registered->uses_bootstrap_storage;
     if (bootstrap_storage) {
@@ -215,6 +219,16 @@ void cap_table_destroy(capability_table_t* table) {
         registered->uses_bootstrap_storage = false;
     }
     spin_unlock_irqrestore(&g_cap_registry_lifetime_lock[owner_core], irq_state);
+
+    for (size_t i = 0U; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
+        capability_entry_t *e = &table->entries[i];
+        if (e->in_use != 0U && e->state == CAP_STATE_LIVE) {
+            cap_endpoint_ref_release(e->type, e->object_ref, e->rights);
+            e->state = CAP_STATE_FREE;
+            e->in_use = 0U;
+        }
+    }
+
     if (!bootstrap_storage) {
         kfree(table);
     }
@@ -238,25 +252,22 @@ int cap_table_grant(capability_table_t* table,
 
     spin_lock(&table->lock);
 
-    /*@
-      loop invariant 0 <= i <= BHARAT_ARRAY_SIZE(table->entries);
-      loop assigns i, table->entries[0..BHARAT_ARRAY_SIZE(table->entries)-1], table->next_id, found_id, ret;
-      loop variant BHARAT_ARRAY_SIZE(table->entries) - i;
-    */
     uint32_t slot_idx;
     if (bh_id_allocator_alloc(&table->id_allocator, &slot_idx) == K_OK) {
             capability_entry_t* e = &table->entries[slot_idx];
-            e->id = slot_idx + 1; // Keep 1-based IDs if expected, or just use slot_idx
+            e->id = slot_idx + 1;
             e->state = CAP_STATE_LIVE;
             e->type = type;
             e->rights = rights;
             e->object_ref = object_ref;
+            e->flags = 0U;
+            e->active_pins = 0U;
+            e->scope_id = 0U;
             e->parent = cap_locator_null();
             e->first_child = cap_locator_null();
             e->next_sibling = cap_locator_null();
             e->generation++;
 
-            // Default owner core to the core creating the capability
             e->owner_core = hal_cpu_get_id();
 
             e->instance_id.origin_core = hal_cpu_get_id();
@@ -272,8 +283,11 @@ int cap_table_grant(capability_table_t* table,
 
     spin_unlock(&table->lock);
 
-    if (ret == 0 && out_cap_id) {
-        *out_cap_id = found_id;
+    if (ret == 0) {
+        cap_endpoint_ref_acquire(type, object_ref, rights);
+        if (out_cap_id) {
+            *out_cap_id = found_id;
+        }
     }
 
     return ret;
@@ -294,24 +308,18 @@ int cap_table_lookup(const capability_table_t* table,
     capability_entry_t found_entry = {0};
     int ret = -4;
 
-    // table must be cast to non-const for spinlock.
     capability_table_t* t = (capability_table_t*)table;
     spin_lock(&t->lock);
 
-    /*@
-      loop invariant 0 <= i <= BHARAT_ARRAY_SIZE(table->entries);
-      loop assigns i, found_entry, ret;
-      loop variant BHARAT_ARRAY_SIZE(table->entries) - i;
-    */
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
         const capability_entry_t* e = &table->entries[i];
         if (e->in_use != 0U && e->id == id_only) {
             if (!bh_cap_generation_matches(e->generation, generation)) {
-                ret = -6; // Stale handle
+                ret = -6;
                 break;
             }
             if (e->state != CAP_STATE_LIVE) {
-                ret = -7; // Not live
+                ret = -7;
                 break;
             }
             if (required_type != CAP_TYPE_NONE && e->type != required_type) {
@@ -337,7 +345,6 @@ int cap_table_lookup(const capability_table_t* table,
     return ret;
 }
 
-// Helper to implement local/same-core delegation without cross-core locks
 static int cap_table_delegate_local(capability_table_t* src,
                                     capability_table_t* dst,
                                     uint32_t cap_id,
@@ -356,10 +363,10 @@ static int cap_table_delegate_local(capability_table_t* src,
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(src->entries); ++i) {
         if (src->entries[i].in_use != 0U && src->entries[i].id == id_only) {
             if (!bh_cap_generation_matches(src->entries[i].generation, generation)) {
-                break; // Stale handle
+                break;
             }
             if (src->entries[i].state != CAP_STATE_LIVE) {
-                break; // Not live
+                break;
             }
             src_entry = &src->entries[i];
             src_slot_idx = (uint32_t)i;
@@ -381,7 +388,6 @@ static int cap_table_delegate_local(capability_table_t* src,
     } else if (delegated_rights == CAP_RIGHT_NONE) {
         ret = -55;
     } else {
-
         uint32_t found_id = 0;
         ret = -2;
 
@@ -394,19 +400,19 @@ static int cap_table_delegate_local(capability_table_t* src,
                 dst_entry->rights = delegated_rights;
                 dst_entry->object_ref = src_entry->object_ref;
                 dst_entry->flags = src_entry->flags;
+                dst_entry->active_pins = 0U;
+                dst_entry->scope_id = src_entry->scope_id;
 
                 dst_entry->parent = cap_locator_make(src, src_slot_idx,
                                                      src_entry->generation,
                                                      (uint32_t)src_entry->revocation_epoch);
 
                 dst_entry->first_child = cap_locator_null();
-
                 dst_entry->next_sibling = src_entry->first_child;
 
                 dst_entry->generation++;
-                dst_entry->owner_core = src_entry->owner_core; // Delegate retains owner core unless explicity transferred
+                dst_entry->owner_core = src_entry->owner_core;
 
-                // Inherit distributed instance ID
                 dst_entry->instance_id = src_entry->instance_id;
                 dst_entry->instance_id.rights_digest = delegated_rights;
                 dst_entry->instance_id.slot_gen = dst_entry->generation;
@@ -427,7 +433,14 @@ static int cap_table_delegate_local(capability_table_t* src,
         }
     }
 
+    cap_type_t acquired_type = (ret == 0 && src_entry != NULL) ? src_entry->type : CAP_TYPE_NONE;
+    uint64_t acquired_obj_ref = (ret == 0 && src_entry != NULL) ? src_entry->object_ref : 0U;
+
     cap_unlock_two_tables(src, dst);
+
+    if (ret == 0) {
+        cap_endpoint_ref_acquire(acquired_type, acquired_obj_ref, delegated_rights);
+    }
 
     return ret;
 }
@@ -458,8 +471,6 @@ int cap_table_delegate(capability_table_t* src,
         return -6;
     }
 
-    // --- CROSS-CORE DELEGATION via Unified Transaction Engine ---
-
     spin_lock(&src->lock);
 
     int ret = -2;
@@ -472,10 +483,10 @@ int cap_table_delegate(capability_table_t* src,
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(src->entries); ++i) {
         if (src->entries[i].in_use != 0U && src->entries[i].id == id_only) {
             if (!bh_cap_generation_matches(src->entries[i].generation, generation)) {
-                break; // Stale handle
+                break;
             }
             if (src->entries[i].state != CAP_STATE_LIVE) {
-                break; // Not live
+                break;
             }
             src_entry = &src->entries[i];
             src_slot_idx = (uint32_t)i;
@@ -521,7 +532,6 @@ int cap_table_delegate(capability_table_t* src,
 
     spin_unlock(&src->lock);
 
-    // Publish transaction
     __asm__ volatile("" : : : "memory");
     atomic_set(&tx->state, BH_CAP_TX_PUBLISHED);
 
@@ -532,7 +542,6 @@ int cap_table_delegate(capability_table_t* src,
         return -6;
     }
 
-    // Bounded transactional wait using monotonic deadline
     bh_kdeadline_t deadline = bh_deadline_after_ns(10 * BH_KTIME_NS_PER_MS);
     bool timed_out = false;
 
@@ -547,7 +556,6 @@ int cap_table_delegate(capability_table_t* src,
 
     if (timed_out) {
         atomic_set(&tx->state, BH_CAP_TX_ABORTED);
-        // Rollback remote capability if destination created it
         uint64_t rollback_payload = cap_tx_pack_req((uint8_t)current_core, tx_slot, tx->generation, (uint8_t)BH_CAP_TX_OP_ROLLBACK);
         urpc_bootstrap_send(target_core, urpc_pack_msg(URPC_CAP_REVOKE, rollback_payload));
         cap_tx_release(current_core, tx_slot);
@@ -561,7 +569,6 @@ int cap_table_delegate(capability_table_t* src,
         return res;
     }
 
-    // Source-side validation / commit
     spin_lock(&src->lock);
 
     src_entry = &src->entries[src_slot_idx];
@@ -578,7 +585,6 @@ int cap_table_delegate(capability_table_t* src,
         atomic_set(&tx->state, BH_CAP_TX_COMMITTED);
         ret = 0;
     } else {
-        // Source validation failed -> Transactional rollback
         atomic_set(&tx->state, BH_CAP_TX_ABORTED);
         ret = -7;
     }
@@ -586,7 +592,6 @@ int cap_table_delegate(capability_table_t* src,
     spin_unlock(&src->lock);
 
     if (ret != 0) {
-        // Rollback target capability with the unified matching transaction payload
         uint64_t rollback_payload = cap_tx_pack_req((uint8_t)current_core, tx_slot, tx->generation, (uint8_t)BH_CAP_TX_OP_ROLLBACK);
         urpc_bootstrap_send(target_core, urpc_pack_msg(URPC_CAP_REVOKE, rollback_payload));
     }
@@ -595,9 +600,6 @@ int cap_table_delegate(capability_table_t* src,
     return ret;
 }
 
-/* These helpers intentionally do not use the distributed delegation path: a
- * receiver cannot dereference a foreign owner's CSpace, and pending messages
- * must not pin an arbitrary sender process indefinitely. */
 kstatus_t bh_cap_transfer_capture(capability_table_t *table, uint32_t cap_id,
                                    cap_rights_mask_t rights,
                                    bh_cap_locator_t *out_locator) {
